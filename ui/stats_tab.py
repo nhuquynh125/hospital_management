@@ -26,13 +26,20 @@ except ImportError:
 
 
 # ── Matplotlib canvas wrapper ────────────────────────────
-class MplCanvas(FigureCanvas):
-    def __init__(self, width=5, height=4, dpi=100):
-        self.fig = Figure(figsize=(width, height), dpi=dpi, facecolor="#f7fafc")
-        self.axes = self.fig.add_subplot(111)
-        super().__init__(self.fig)
-        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.updateGeometry()
+if MATPLOTLIB:
+    class MplCanvas(FigureCanvas):
+        def __init__(self, width=5, height=4, dpi=100):
+            self.fig = Figure(figsize=(width, height), dpi=dpi, facecolor="#f7fafc")
+            self.axes = self.fig.add_subplot(111)
+            super().__init__(self.fig)
+            self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+            self.updateGeometry()
+else:
+    class MplCanvas(QWidget):
+        def __init__(self, *args, **kwargs):
+            super().__init__()
+            layout = QVBoxLayout(self)
+            layout.addWidget(QLabel("Matplotlib not installed"))
 
 
 # ═══════════════════════════════════════════════════════════
