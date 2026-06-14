@@ -1,0 +1,20 @@
+# Hospital Management System — Requirements
+# Cài đặt tất cả: pip install -r requirements.txt
+
+# ── Bắt buộc (Core) ───────────────────────────────────────
+PyQt6>=6.11.0          # Giao diện
+bcrypt>=4.0.0           # Hash mật khẩu
+rapidfuzz>=3.0.0        # Tìm kiếm thông minh NLP
+
+# ── Phần 2 (Xuất file) ────────────────────────────────────
+reportlab>=4.0.0        # Xuất PDF
+openpyxl>=3.1.0         # Xuất Excel
+
+# ── Phần 3 (AI & Biểu đồ) ────────────────────────────────
+matplotlib>=3.7.0       # Biểu đồ thống kê
+scikit-learn>=1.3.0     # Dự đoán bệnh (Random Forest)
+numpy>=1.24.0           # Xử lý số
+pandas>=2.0.0           # Xử lý dữ liệu
+anthropic>=0.25.0       # Chatbot AI (cần API key từ console.anthropic.com)
+google-generativeai>=0.7.0   # Chatbot AI (Gemini, cần GEMINI_API_KEY trong .env)
+python-dotenv>=1.0.0          # Đọc API key từ file .env

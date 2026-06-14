@@ -1,0 +1,181 @@
+"""
+Hospital Management System — Login Window
+Card đăng nhập luôn nằm giữa, width cố định 400px, window tùy chỉnh kích thước
+"""
+
+from PyQt6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
+    QPushButton, QMessageBox, QFrame, QSizePolicy
+)
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QFont
+import core.auth as auth
+
+
+class LoginWindow(QWidget):
+    login_success = pyqtSignal(dict)
+
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Đăng nhập — Hospital Management System")
+        self.resize(860, 600)
+        self.setMinimumSize(500, 460)
+        self._build_ui()
+        self._apply_style()
+
+    def _build_ui(self):
+        # Root: full background, centers everything
+        root = QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
+
+        # Vertical center
+        root.addStretch(1)
+
+        # Horizontal center row
+        h_row = QHBoxLayout()
+        h_row.setContentsMargins(0, 0, 0, 0)
+        h_row.addStretch(1)
+
+        # ── Card container (fixed width 400px) ────────────────────
+        container = QWidget()
+        container.setFixedWidth(400)
+        container.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+        container.setObjectName("container")
+
+        cl = QVBoxLayout(container)
+        cl.setContentsMargins(0, 0, 0, 0)
+        cl.setSpacing(0)
+
+        # Logo
+        logo = QLabel("🏥")
+        logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        logo.setFont(QFont("Segoe UI", 42))
+        cl.addWidget(logo)
+
+        app_name = QLabel("Hospital Management")
+        app_name.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        app_name.setFont(QFont("Segoe UI", 17, QFont.Weight.Bold))
+        app_name.setObjectName("appName")
+        cl.addWidget(app_name)
+
+        sub = QLabel("Hệ thống quản lý bệnh viện")
+        sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        sub.setObjectName("subTitle")
+        cl.addSpacing(4)
+        cl.addWidget(sub)
+        cl.addSpacing(28)
+
+        # Card
+        card = QFrame()
+        card.setObjectName("loginCard")
+        card_layout = QVBoxLayout(card)
+        card_layout.setContentsMargins(28, 28, 28, 28)
+        card_layout.setSpacing(14)
+
+        user_lbl = QLabel("Tên đăng nhập")
+        user_lbl.setObjectName("fieldLabel")
+        card_layout.addWidget(user_lbl)
+
+        self.username_input = QLineEdit()
+        self.username_input.setPlaceholderText("admin / bacsi01 / letan01 ...")
+        self.username_input.setObjectName("authInput")
+        self.username_input.returnPressed.connect(self._on_login)
+        card_layout.addWidget(self.username_input)
+
+        pass_lbl = QLabel("Mật khẩu")
+        pass_lbl.setObjectName("fieldLabel")
+        card_layout.addWidget(pass_lbl)
+
+        self.password_input = QLineEdit()
+        self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
+        self.password_input.setPlaceholderText("Nhập mật khẩu")
+        self.password_input.setObjectName("authInput")
+        self.password_input.returnPressed.connect(self._on_login)
+        card_layout.addWidget(self.password_input)
+
+        card_layout.addSpacing(6)
+
+        self.login_btn = QPushButton("Đăng nhập")
+        self.login_btn.setObjectName("loginBtn")
+        self.login_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.login_btn.clicked.connect(self._on_login)
+        card_layout.addWidget(self.login_btn)
+
+        cl.addWidget(card)
+        cl.addSpacing(16)
+
+        footer = QLabel("Hospital Management System by Doan Thi Nhu Quynh 25AI043")
+        footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        footer.setObjectName("footer")
+        cl.addWidget(footer)
+
+        hint = QLabel("Demo: admin / admin123")
+        hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        hint.setObjectName("hint")
+        cl.addWidget(hint)
+
+        h_row.addWidget(container)
+        h_row.addStretch(1)
+
+        root.addLayout(h_row)
+        root.addStretch(1)
+
+    def _on_login(self):
+        username = self.username_input.text().strip()
+        password = self.password_input.text()
+        if not username or not password:
+            QMessageBox.warning(self, "Thiếu thông tin",
+                                "Vui lòng nhập tên đăng nhập và mật khẩu.")
+            return
+        self.login_btn.setEnabled(False)
+        self.login_btn.setText("Đang xác thực…")
+        user = auth.login(username, password)
+        self.login_btn.setEnabled(True)
+        self.login_btn.setText("Đăng nhập")
+        if user:
+            self.login_success.emit(user)
+            self.close()
+        else:
+            QMessageBox.critical(self, "Sai thông tin",
+                                 "Tên đăng nhập hoặc mật khẩu không đúng.\nVui lòng thử lại.")
+            self.password_input.clear()
+            self.password_input.setFocus()
+
+    def _apply_style(self):
+        self.setStyleSheet("""
+        QWidget {
+            background-color: #f0f4f8;
+            font-family: 'Segoe UI', Arial;
+        }
+        #container { background: transparent; }
+        #appName   { color: #1a365d; margin-top: 4px; }
+        #subTitle  { color: #718096; font-size: 12px; }
+        #loginCard {
+            background: white;
+            border-radius: 14px;
+            border: 1px solid #e2e8f0;
+        }
+        #fieldLabel {
+            font-size: 13px; font-weight: 600;
+            color: #2d3748; margin-bottom: 2px;
+        }
+        #authInput {
+            border: 1.5px solid #cbd5e0;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 13px;
+            background: #f7fafc;
+        }
+        #authInput:focus { border-color: #4299e1; background: white; }
+        #loginBtn {
+            background: #2b6cb0; color: white; border: none;
+            border-radius: 8px; padding: 11px;
+            font-size: 14px; font-weight: 600;
+        }
+        #loginBtn:hover   { background: #2c5282; }
+        #loginBtn:pressed { background: #1a365d; }
+        #loginBtn:disabled{ background: #a0aec0; }
+        #footer { color: #a0aec0; font-size: 11px; margin-top: 4px; }
+        #hint   { color: #718096; font-size: 11px; }
+        """)

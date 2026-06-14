@@ -1,0 +1,42 @@
+"""
+Hospital Management System — Entry Point
+Run: python main.py
+"""
+
+import sys
+import os
+
+# Add project root to path so all modules resolve correctly
+sys.path.insert(0, os.path.dirname(__file__))
+
+from PyQt6.QtWidgets import QApplication
+from PyQt6.QtGui import QFont
+from database.schema import init_db
+from ui.login_window import LoginWindow
+from ui.main_window  import MainWindow
+
+
+def main():
+    # 1. Bootstrap database
+    init_db()
+
+    # 2. Launch Qt app
+    app = QApplication(sys.argv)
+    app.setApplicationName("Hospital Management System")
+    app.setFont(QFont("Segoe UI", 10))
+
+    # 3. Show login
+    login_win = LoginWindow()
+
+    def on_login_success(user: dict):
+        window = MainWindow(user)
+        window.show()
+
+    login_win.login_success.connect(on_login_success)
+    login_win.show()
+
+    sys.exit(app.exec())
+
+
+if __name__ == "__main__":
+    main()
