@@ -1,4 +1,4 @@
-"""
+﻿"""
 Hospital Management System — Màn hình Khám bệnh tích hợp
 Flow: Thông tin BN → Khám / Chẩn đoán → Chỉ định XN (nếu cần) → Kê đơn thuốc → Lưu
 Chỉ dành cho bác sĩ (role: doctor, admin)
@@ -653,12 +653,25 @@ class ExaminationDialog(QDialog):
 
         # 4. Save prescription (if items exist)
         if rx_data["items"]:
-            dao.save_prescription({
-                "medical_record_id": record_id,
-                "doctor_id":         doc_staff_id,
-                "notes":             rx_data["notes"],
-                "items":             rx_data["items"],
-            })
+            try:
+                dao.save_prescription({
+                    "medical_record_id": record_id,
+                    "doctor_id":         doc_staff_id,
+                    "notes":             rx_data["notes"],
+                    "items":             rx_data["items"],
+                })
+            except ValueError as e:
+                # Prescription failed (insufficient stock) —
+                # compensate by removing the medical_record we just wrote,
+                # then surface a clear error dialog to the user.
+                dao.delete_medical_record(record_id)
+                QMessageBox.critical(
+                    self, "Không đủ tồn kho",
+                    str(e) + "\n\nĐơn thuốc chưa được lưu.\n"
+                             "Vui lòng điều chỉnh số lượng và thử lại."
+                )
+                self.tabs.setCurrentIndex(2)   # jump back to Prescription tab
+                return
 
         # 5. Update appointment status → Hoàn thành
         if self.appointment_id:

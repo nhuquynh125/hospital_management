@@ -171,6 +171,18 @@ def add_medical_record(data: dict) -> int:
     conn.close()
     return rid
 
+def delete_medical_record(record_id: int):
+    """Compensating action: undo a freshly written medical_records row.
+    Called when save_prescription() raises ValueError (stock failure) so the DB
+    is not left with an orphaned medical_records row that has no prescription.
+    """
+    conn = get_connection()
+    try:
+        conn.execute("DELETE FROM medical_records WHERE id=?", (record_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
 
 # ═══════════════════════════════════════════════════════════
 #  STAFF
