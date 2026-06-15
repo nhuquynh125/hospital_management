@@ -42,15 +42,15 @@ class MainWindow(QMainWindow):
         self.user = user
         self.setWindowTitle("Hospital Management System")
         self.setMinimumSize(1150, 700)
-        self._tab_widgets   = {}
-        self._nav_buttons   = []
-        self._btn_group     = []
+        self._tab_widgets = {}
+        self._nav_buttons = []
+        self._btn_group = []
+        self._factories = []  # NEW
         self._build_ui()
         self._apply_style()
         if self._nav_buttons:
             self._nav_buttons[0].setChecked(True)
-            self._load_tab(0, self._make_dashboard())
-
+            self._load_tab(0, self._factories[0]())  # CHANGED: was self._make_dashboard()
     def _build_ui(self):
         central = QWidget()
         self.setCentralWidget(central)
@@ -109,8 +109,8 @@ class MainWindow(QMainWindow):
             sb.addWidget(btn)
             self._nav_buttons.append(btn)
             self._btn_group.append(btn)
-            self._stack.addWidget(QWidget())   # placeholder
-
+            self._factories.append(factory)  # NEW
+            self._stack.addWidget(QWidget())  # placeholder
         sb.addStretch()
 
         sep2 = QFrame(); sep2.setFrameShape(QFrame.Shape.HLine); sep2.setObjectName("sidebarSep")

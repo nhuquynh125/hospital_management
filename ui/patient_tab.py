@@ -17,9 +17,8 @@ import database.dao as dao
 import core.auth as auth
 from utils.search import smart_search_patients
 
-
 BLOOD_TYPES = ["", "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
-GENDERS = ["", "Nam", "Nữ", "Khác"]
+GENDERS = ["Nam", "Nữ", "Khác","Không muốn trả lời"]
 
 
 # ═══════════════════════════════════════════════════════════
@@ -411,7 +410,11 @@ class PatientTab(QWidget):
     def _add_patient(self):
         dlg = PatientFormDialog(self)
         if dlg.exec() == QDialog.DialogCode.Accepted:
-            dao.add_patient(dlg.result_data)
+            try:
+                dao.add_patient(dlg.result_data)
+            except ValueError as e:
+                QMessageBox.critical(self, "Lỗi dữ liệu", str(e))
+                return
             self.load_data()
             QMessageBox.information(self, "Thành công", "Đã thêm bệnh nhân mới.")
 
@@ -421,10 +424,13 @@ class PatientTab(QWidget):
         p = dao.get_patient_by_id(pid)
         dlg = PatientFormDialog(self, patient_data=p)
         if dlg.exec() == QDialog.DialogCode.Accepted:
-            dao.update_patient(pid, dlg.result_data)
+            try:
+                dao.update_patient(pid, dlg.result_data)
+            except ValueError as e:
+                QMessageBox.critical(self, "Lỗi dữ liệu", str(e))
+                return
             self.load_data()
             QMessageBox.information(self, "Thành công", "Đã cập nhật thông tin bệnh nhân.")
-
     def _delete_patient(self):
         pid = self._selected_id()
         if not pid: return

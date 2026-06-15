@@ -82,38 +82,46 @@ def get_patient_by_id(patient_id: int):
 
 def add_patient(data: dict) -> int:
     conn = get_connection()
-    code = _next_patient_code()
-    cur = conn.execute("""
-        INSERT INTO patients
-            (patient_code, full_name, birth_date, gender, id_card, phone, address,
-             blood_type, insurance_id, insurance_exp, emergency_contact, allergies, notes)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
-    """, (code, data["full_name"], data.get("birth_date"), data.get("gender"),
-          data.get("id_card"), data.get("phone"), data.get("address"),
-          data.get("blood_type"), data.get("insurance_id"), data.get("insurance_exp"),
-          data.get("emergency_contact"), data.get("allergies"), data.get("notes")))
-    conn.commit()
-    pid = cur.lastrowid
-    conn.close()
-    return pid
+    try:
+        code = _next_patient_code()
+        cur = conn.execute("""
+            INSERT INTO patients
+                (patient_code, full_name, birth_date, gender, id_card, phone, address,
+                 blood_type, insurance_id, insurance_exp, emergency_contact, allergies, notes)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+        """, (code, data["full_name"], data.get("birth_date"), data.get("gender"),
+              data.get("id_card"), data.get("phone"), data.get("address"),
+              data.get("blood_type"), data.get("insurance_id"), data.get("insurance_exp"),
+              data.get("emergency_contact"), data.get("allergies"), data.get("notes")))
+        conn.commit()
+        return cur.lastrowid
+    except sqlite3.IntegrityError as e:
+        conn.rollback()
+        raise ValueError(f"Không thể lưu bệnh nhân — dữ liệu không hợp lệ hoặc bị trùng (CMND/CCCD?): {e}") from e
+    finally:
+        conn.close()
 
 
 def update_patient(patient_id: int, data: dict):
     conn = get_connection()
-    conn.execute("""
-        UPDATE patients SET
-            full_name=?, birth_date=?, gender=?, id_card=?, phone=?, address=?,
-            blood_type=?, insurance_id=?, insurance_exp=?, emergency_contact=?,
-            allergies=?, notes=?, updated_at=datetime('now','localtime')
-        WHERE id=?
-    """, (data["full_name"], data.get("birth_date"), data.get("gender"),
-          data.get("id_card"), data.get("phone"), data.get("address"),
-          data.get("blood_type"), data.get("insurance_id"), data.get("insurance_exp"),
-          data.get("emergency_contact"), data.get("allergies"), data.get("notes"),
-          patient_id))
-    conn.commit()
-    conn.close()
-
+    try:
+        conn.execute("""
+            UPDATE patients SET
+                full_name=?, birth_date=?, gender=?, id_card=?, phone=?, address=?,
+                blood_type=?, insurance_id=?, insurance_exp=?, emergency_contact=?,
+                allergies=?, notes=?, updated_at=datetime('now','localtime')
+            WHERE id=?
+        """, (data["full_name"], data.get("birth_date"), data.get("gender"),
+              data.get("id_card"), data.get("phone"), data.get("address"),
+              data.get("blood_type"), data.get("insurance_id"), data.get("insurance_exp"),
+              data.get("emergency_contact"), data.get("allergies"), data.get("notes"),
+              patient_id))
+        conn.commit()
+    except sqlite3.IntegrityError as e:
+        conn.rollback()
+        raise ValueError(f"Không thể cập nhật bệnh nhân — dữ liệu không hợp lệ hoặc bị trùng (CMND/CCCD?): {e}") from e
+    finally:
+        conn.close()
 
 def delete_patient(patient_id: int):
     conn = get_connection()
