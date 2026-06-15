@@ -105,11 +105,16 @@ class BillFormDialog(QDialog):
         add_item_btn = QPushButton("➕"); add_item_btn.setObjectName("addItemBtn")
         add_item_btn.setFixedWidth(36)
         add_item_btn.clicked.connect(self._add_item)
+        del_item_btn = QPushButton("🗑"); del_item_btn.setObjectName("delItemBtn")
+        del_item_btn.setFixedWidth(36)
+        del_item_btn.setToolTip("Xoá dòng đã chọn")
+        del_item_btn.clicked.connect(self._del_item)
         add_row.addWidget(self.f_item_type)
         add_row.addWidget(self.f_item_desc, 2)
         add_row.addWidget(self.f_item_qty)
         add_row.addWidget(self.f_item_price, 2)
         add_row.addWidget(add_item_btn)
+        add_row.addWidget(del_item_btn)
         rl.addLayout(add_row)
 
         # Totals
@@ -157,6 +162,15 @@ class BillFormDialog(QDialog):
             grand_total += it["total"]
         self.total_lbl.setText(f"Tổng tiền: {int(grand_total):,} VNĐ")
 
+    def _del_item(self):
+        """Remove the currently selected row from self.items and refresh the table."""
+        row = self.items_table.currentRow()
+        if row < 0:
+            QMessageBox.information(self, "Chua chon", "Vui long chon dong can xoa.")
+            return
+        self.items.pop(row)
+        self._refresh_items()
+
     def _fill_form(self):
         b = self.bill_data
         for i in range(self.f_patient.count()):
@@ -180,10 +194,11 @@ class BillFormDialog(QDialog):
             QMessageBox.warning(self, "Thiếu thông tin", "Vui lòng chọn bệnh nhân.")
             return
         user = auth.get_current_user()
+        acct_staff_id = dao.get_staff_id_by_user_id(user["id"]) if user else None
         grand_total = sum(i["total"] for i in self.items)
         self.result_data = {
             "patient_id":     patient_id,
-            "accountant_id":  user["id"] if user else None,
+            "accountant_id":  acct_staff_id,
             "total_amount":   grand_total,
             "paid_amount":    self.f_paid.value(),
             "discount":       self.f_discount.value(),
@@ -206,6 +221,8 @@ class BillFormDialog(QDialog):
         #panel { background:white; border-radius:8px; border:1px solid #e2e8f0; padding:4px; }
         #totalLbl { font-size:13px; font-weight:700; color:#276749; padding:4px 0; }
         #addItemBtn { background:#276749; color:white; border:none; border-radius:6px; font-size:16px; }
+        #delItemBtn { background:#c53030; color:white; border:none; border-radius:6px; font-size:14px; }
+        #delItemBtn:hover { background:#9b2c2c; }
         #saveBtn { background:#276749; color:white; border:none; border-radius:6px; padding:8px 20px; font-weight:600; }
         #saveBtn:hover { background:#22543d; }
         #cancelBtn { background:#e2e8f0; color:#4a5568; border:none; border-radius:6px; padding:8px 20px; }

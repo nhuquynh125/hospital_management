@@ -628,11 +628,13 @@ class ExaminationDialog(QDialog):
                     self.tabs.setCurrentIndex(2); return
 
         user = auth.get_current_user()
+        # Resolve users.id -> staff.id so FK columns point to the right row
+        doc_staff_id = dao.get_staff_id_by_user_id(user["id"]) if user else None
 
         # 2. Save medical record
         record_data = {
             "patient_id":    self.patient_id,
-            "doctor_id":     user["id"] if user else None,
+            "doctor_id":     doc_staff_id,
             "visit_date":    datetime.now().strftime("%Y-%m-%d %H:%M"),
             **exam_data,
         }
@@ -642,7 +644,7 @@ class ExaminationDialog(QDialog):
         for test_type in lab_data["tests"]:
             dao.add_lab_test({
                 "patient_id":   self.patient_id,
-                "doctor_id":    user["id"] if user else None,
+                "doctor_id":    doc_staff_id,
                 "test_type":    test_type,
                 "ordered_date": datetime.now().strftime("%Y-%m-%d %H:%M"),
                 "status":       "Chờ",
@@ -653,7 +655,7 @@ class ExaminationDialog(QDialog):
         if rx_data["items"]:
             dao.save_prescription({
                 "medical_record_id": record_id,
-                "doctor_id":         user["id"] if user else None,
+                "doctor_id":         doc_staff_id,
                 "notes":             rx_data["notes"],
                 "items":             rx_data["items"],
             })

@@ -1,4 +1,4 @@
-"""
+﻿"""
 Hospital Management System — Staff Management Tab
 Quản lý nhân viên, bác sĩ, y tá, lễ tân
 """
@@ -15,7 +15,17 @@ from PyQt6.QtGui import QFont
 import database.dao as dao
 import core.auth as auth
 
-POSITIONS = ["Bác sĩ", "Y tá", "Lễ tân", "Dược sĩ", "Quản trị", "Kỹ thuật viên", "Khác"]
+POSITIONS = [
+    "B\u00e1c si",             # doctor
+    "Y t\u00e1 / \u0110i\u1ec1u d\u01b0\u1ee1ng",   # nurse  (matches seed)
+    "L\u1ec5 t\u00e2n",            # receptionist
+    "D\u01b0\u1ee3c si",           # pharmacist
+    "K\u1ebf to\u00e1n",           # accountant (matches seed)
+    "X\u00e9t nghi\u1ec7m vi\u00ean",  # lab_technician (matches seed)
+    "Gi\u00e1m \u0111\u1ed1c",          # director (matches seed)
+    "Qu\u1ea3n tr\u1ecb vi\u00ean",   # admin
+    "Kh\u00e1c",               # other
+]
 GENDERS   = ["Nam", "Nữ", "Khác"]
 
 
@@ -117,8 +127,16 @@ class StaffFormDialog(QDialog):
         self.f_phone.setText(s["phone"] or "")
         self.f_email.setText(s["email"] or "")
         self.f_address.setText(s["address"] or "")
-        idx = self.f_position.findText(s["position"] or "")
-        if idx >= 0: self.f_position.setCurrentIndex(idx)
+        # Safe position lookup: never silently default to index 0 on mismatch
+        _pos_val = s["position"] or ""
+        _pos_idx = self.f_position.findText(_pos_val)
+        if _pos_idx >= 0:
+            self.f_position.setCurrentIndex(_pos_idx)
+        else:
+            # Position from DB not in list: add it as a temporary entry so the
+            # value is preserved on save instead of being overwritten with index-0.
+            self.f_position.addItem(_pos_val)
+            self.f_position.setCurrentIndex(self.f_position.count() - 1)
         self.f_spec.setText(s["specialization"] or "")
         if s["department_id"]:
             for i in range(self.f_dept.count()):
@@ -345,3 +363,4 @@ class StaffTab(QWidget):
             padding: 8px; border: none;
         }
         """)
+

@@ -143,9 +143,10 @@ class NursingNoteDialog(QDialog):
             "resp":  self.f_resp.value(),
         })
         user = auth.get_current_user()
+        nurse_staff_id = dao.get_staff_id_by_user_id(user["id"]) if user else None
         self.result_data = {
             "patient_id":     patient_id,
-            "nurse_id":       user["id"] if user else None,
+            "nurse_id":       nurse_staff_id,
             "note_date":      self.f_datetime.dateTime().toString("yyyy-MM-dd HH:mm:ss"),
             "vital_signs":    vital_signs,
             "care_given":     self.f_care.toPlainText().strip(),

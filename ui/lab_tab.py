@@ -145,10 +145,11 @@ class LabTestDialog(QDialog):
 
     def _save(self):
         user = auth.get_current_user()
+        tech_staff_id = dao.get_staff_id_by_user_id(user["id"]) if user else None
         self.result_data = {
             "patient_id":    self.f_patient.currentData(),
             "doctor_id":     self.f_doctor.currentData(),
-            "technician_id": user["id"] if user else None,
+            "technician_id": tech_staff_id,
             "test_type":     self.f_test_type.currentText(),
             "ordered_date":  self.f_ordered.dateTime().toString("yyyy-MM-dd HH:mm:ss"),
             "result_date":   self.f_result_date.dateTime().toString("yyyy-MM-dd HH:mm:ss"),

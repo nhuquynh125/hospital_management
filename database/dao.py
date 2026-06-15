@@ -1,4 +1,4 @@
-"""
+﻿"""
 Hospital Management System — Data Access Layer (DAO)
 All database queries are centralised here.
 """
@@ -18,6 +18,18 @@ def get_user_by_username(username: str):
     ).fetchone()
     conn.close()
     return row
+
+
+def get_staff_id_by_user_id(user_id: int):
+    """Map a users.id -> staff.id. Returns None if no linked staff row found."""
+    if user_id is None:
+        return None
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT id FROM staff WHERE user_id=? AND is_active=1 LIMIT 1", (user_id,)
+    ).fetchone()
+    conn.close()
+    return row["id"] if row else None
 
 
 def log_action(user_id, action, table_name=None, record_id=None, detail=None):
@@ -165,8 +177,8 @@ def add_medical_record(data: dict) -> int:
 # ═══════════════════════════════════════════════════════════
 def _next_staff_code(position: str):
     prefix_map = {
-        "Bác sĩ": "BS", "Y tá": "YT", "Lễ tân": "LT",
-        "Quản trị": "QT", "Dược sĩ": "DS"
+        "B\u00e1c s\u0129": "BS", "Y t\u00e1 / \u0110i\u1ec1u d\u01b0\u1ee1ng": "DD", "L\u1ec5 t\u00e2n": "LT",
+        "D\u01b0\u1ee3c s\u0129": "DS", "K\u1ebf to\u00e1n": "KT", "X\u00e9t nghi\u1ec7m vi\u00ean": "XN", "Gi\u00e1m \u0111\u1ed1c": "GD", "Qu\u1ea3n tr\u1ecb vi\u00ean": "QT"
     }
     prefix = prefix_map.get(position, "NV")
     conn = get_connection()
@@ -569,27 +581,68 @@ def check_drug_interactions(medicine_ids: list) -> list:
 #  PRESCRIPTIONS
 # ═══════════════════════════════════════════════════════════
 def save_prescription(data: dict) -> int:
+    """
+    Save a prescription inside a single transaction.
+    Raises ValueError for any medicine whose stock_qty < quantity requested,
+    so the caller can surface a meaningful error instead of silently undershooting.
+    """
     conn = get_connection()
-    cur = conn.execute("""
-        INSERT INTO prescriptions (medical_record_id, doctor_id, notes)
-        VALUES (?,?,?)
-    """, (data.get("medical_record_id"), data.get("doctor_id"), data.get("notes")))
-    presc_id = cur.lastrowid
-    for item in data.get("items", []):
-        conn.execute("""
-            INSERT INTO prescription_items
-                (prescription_id, medicine_id, quantity, dosage, duration_days, notes)
-            VALUES (?,?,?,?,?,?)
-        """, (presc_id, item["medicine_id"], item["quantity"],
-              item.get("dosage"), item.get("duration_days"), item.get("notes")))
-        # Deduct stock
-        conn.execute("""
-            UPDATE medicines SET stock_qty = stock_qty - ?
-            WHERE id=? AND stock_qty >= ?
-        """, (item["quantity"], item["medicine_id"], item["quantity"]))
-    conn.commit()
-    conn.close()
-    return presc_id
+    try:
+        # BEGIN IMMEDIATE locks the DB for writing immediately, so no concurrent
+        # writer can change stock_qty between our pre-flight SELECT and the UPDATE.
+        conn.execute("BEGIN IMMEDIATE")
+        # Pre-flight: verify stock for every line item BEFORE writing anything
+        out_of_stock = []
+        for item in data.get("items", []):
+            row = conn.execute(
+                "SELECT name, stock_qty FROM medicines WHERE id=?",
+                (item["medicine_id"],)
+            ).fetchone()
+            if row is None:
+                out_of_stock.append(f"ID {item['medicine_id']}: thuoc khong ton tai")
+            elif row["stock_qty"] < item["quantity"]:
+                out_of_stock.append(
+                    f"{row['name']}: yeu cau {item['quantity']}, ton kho {row['stock_qty']}"
+                )
+        if out_of_stock:
+            raise ValueError(
+                "Khong du ton kho cho cac thuoc sau:\n" + "\n".join(out_of_stock)
+            )
+
+        # All stock checks passed -> write prescription header
+        cur = conn.execute("""
+            INSERT INTO prescriptions (medical_record_id, doctor_id, notes)
+            VALUES (?,?,?)
+        """, (data.get("medical_record_id"), data.get("doctor_id"), data.get("notes")))
+        presc_id = cur.lastrowid
+
+        for item in data.get("items", []):
+            conn.execute("""
+                INSERT INTO prescription_items
+                    (prescription_id, medicine_id, quantity, dosage, duration_days, notes)
+                VALUES (?,?,?,?,?,?)
+            """, (presc_id, item["medicine_id"], item["quantity"],
+                  item.get("dosage"), item.get("duration_days"), item.get("notes")))
+
+            # Deduct stock (guaranteed to succeed after pre-flight)
+            rows_affected = conn.execute("""
+                UPDATE medicines SET stock_qty = stock_qty - ?
+                WHERE id=? AND stock_qty >= ?
+            """, (item["quantity"], item["medicine_id"], item["quantity"])).rowcount
+
+            # Belt-and-suspenders: if a concurrent write beat us, rollback
+            if rows_affected == 0:
+                raise ValueError(
+                    f"Ton kho thay doi trong khi luu don thuoc. Vui long thu lai."
+                )
+
+        conn.commit()
+        return presc_id
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 def get_all_prescriptions():
@@ -825,17 +878,36 @@ def add_bill(data: dict) -> int:
     conn.commit(); conn.close(); return bid
 
 def update_bill(bid: int, data: dict):
+    """Update bill header AND fully sync its bill_items in one transaction."""
     conn = get_connection()
-    conn.execute("""
-        UPDATE bills SET total_amount=?, paid_amount=?, discount=?,
-            insurance_cover=?, payment_method=?, status=?, notes=?
-        WHERE id=?
-    """, (data.get("total_amount",0), data.get("paid_amount",0),
-          data.get("discount",0), data.get("insurance_cover",0),
-          data.get("payment_method"), data.get("status"), data.get("notes"), bid))
-    conn.commit(); conn.close()
+    try:
+        conn.execute("""
+            UPDATE bills SET total_amount=?, paid_amount=?, discount=?,
+                insurance_cover=?, payment_method=?, status=?, notes=?
+            WHERE id=?
+        """, (data.get("total_amount", 0), data.get("paid_amount", 0),
+              data.get("discount", 0), data.get("insurance_cover", 0),
+              data.get("payment_method"), data.get("status"),
+              data.get("notes"), bid))
+
+        # Sync items: delete all old rows, re-insert current list
+        conn.execute("DELETE FROM bill_items WHERE bill_id=?", (bid,))
+        for item in data.get("items", []):
+            conn.execute("""
+                INSERT INTO bill_items (bill_id, item_type, description, quantity, unit_price, total)
+                VALUES (?,?,?,?,?,?)
+            """, (bid, item["item_type"], item["description"],
+                  item["quantity"], item["unit_price"], item["total"]))
+
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 def update_bill_status(bid: int, status: str):
     conn = get_connection()
     conn.execute("UPDATE bills SET status=? WHERE id=?", (status, bid))
     conn.commit(); conn.close()
+
