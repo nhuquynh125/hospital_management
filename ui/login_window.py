@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont
 import core.auth as auth
+from ui.register_dialog import RegisterDialog
 
 
 class LoginWindow(QWidget):
@@ -113,6 +114,19 @@ class LoginWindow(QWidget):
         self.login_btn.clicked.connect(self._on_login)
         card_layout.addWidget(self.login_btn)
 
+        card_layout.addSpacing(8)
+        
+        register_lbl = QLabel("Chưa có tài khoản?")
+        register_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        register_lbl.setObjectName("registerLabel")
+        card_layout.addWidget(register_lbl)
+        
+        self.register_btn = QPushButton("Đăng ký")
+        self.register_btn.setObjectName("registerBtn")
+        self.register_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.register_btn.clicked.connect(self._on_register)
+        card_layout.addWidget(self.register_btn)
+
         cl.addWidget(card)
         cl.addSpacing(16)
 
@@ -152,6 +166,13 @@ class LoginWindow(QWidget):
                                  "Tên đăng nhập hoặc mật khẩu không đúng.\nVui lòng thử lại.")
             self.password_input.clear()
             self.password_input.setFocus()
+
+    def _on_register(self):
+        dialog = RegisterDialog(self)
+        if dialog.exec():
+            # If user successfully registers, you might want to automatically
+            # fill the username, but for now we just close the dialog.
+            pass
 
     def _toggle_password(self):
         if self.password_input.echoMode() == QLineEdit.EchoMode.Password:
@@ -198,6 +219,15 @@ class LoginWindow(QWidget):
         #loginBtn:hover   { background: #2c5282; }
         #loginBtn:pressed { background: #1a365d; }
         #loginBtn:disabled{ background: #a0aec0; }
+        #registerLabel {
+            font-size: 13px; color: #718096; margin-top: 4px;
+        }
+        #registerBtn {
+            background: white; color: #2b6cb0; border: 1.5px solid #2b6cb0;
+            border-radius: 8px; padding: 11px; font-size: 14px; font-weight: 600;
+        }
+        #registerBtn:hover   { background: #ebf8ff; }
+        #registerBtn:pressed { background: #bee3f8; }
         #footer { color: #a0aec0; font-size: 11px; margin-top: 4px; }
         #hint   { color: #718096; font-size: 11px; }
         """)
