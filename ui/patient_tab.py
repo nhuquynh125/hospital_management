@@ -38,7 +38,8 @@ class PatientFormDialog(QDialog):
         self._apply_style()
 
     def _build_ui(self):
-        layout = QVBoxLayout(self)
+        layout = QVBoxLayout()
+        self.setLayout(layout)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(12)
 
