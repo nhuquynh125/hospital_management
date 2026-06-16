@@ -189,7 +189,7 @@ def delete_medical_record(record_id: int):
 # ═══════════════════════════════════════════════════════════
 def _next_staff_code(position: str):
     prefix_map = {
-        "B\u00e1c s\u0129": "BS", "Y t\u00e1 / \u0110i\u1ec1u d\u01b0\u1ee1ng": "DD", "L\u1ec5 t\u00e2n": "LT",
+        "B\u00e1c s\u0129": "BS", "Y t\u00e1 / \u0110i\u1ec1u d\u01b0\u1ee1ng": "YT", "L\u1ec5 t\u00e2n": "LT",
         "D\u01b0\u1ee3c s\u0129": "DS", "K\u1ebf to\u00e1n": "KT", "X\u00e9t nghi\u1ec7m vi\u00ean": "XN", "Gi\u00e1m \u0111\u1ed1c": "GD", "Qu\u1ea3n tr\u1ecb vi\u00ean": "QT"
     }
     prefix = prefix_map.get(position, "NV")

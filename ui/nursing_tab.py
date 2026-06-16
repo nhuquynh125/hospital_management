@@ -240,6 +240,7 @@ class NursingTab(QWidget):
             "Cần theo dõi": ("#fff3cd","#856404"),
             "Nặng":         ("#f8d7da","#721c24"),
             "Nguy kịch":    ("#f8d7da","#721c24"),
+            "Xuất viện":    ("#e8f4f8","#2c7a7b"),  # soft teal — discharged
         }
         from PyQt6.QtGui import QColor
         for r, n in enumerate(rows):

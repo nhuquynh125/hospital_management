@@ -1,4 +1,4 @@
-"""
+﻿"""
 Hospital Management System — AI Chatbot Tab
 Chatbot hỗ trợ tra cứu thông tin y tế (Google Gemini API)
 
@@ -33,6 +33,26 @@ try:
         genai.configure(api_key=GEMINI_API_KEY)
 except ImportError:
     GEMINI = False
+
+
+def _check_gemini_key_or_warn(parent_widget=None) -> bool:
+    """Return True if key present, else show QMessageBox and return False."""
+    if GEMINI_API_KEY:
+        return True
+    from PyQt6.QtWidgets import QMessageBox
+    msg = QMessageBox(parent_widget)
+    msg.setIcon(QMessageBox.Icon.Warning)
+    msg.setWindowTitle("Thiếu API Key")
+    msg.setText(
+        "<b>GEMINI_API_KEY chưa được cấu hình.</b><br><br>"
+        "Vui lòng tạo file <code>.env</code> ở thư mục gốc dự án với nội dung:<br>"
+        "<pre>GEMINI_API_KEY=your_key_here</pre>"
+        "Lấy key miễn phí tại: "
+        "<a href=\"https://aistudio.google.com/app/apikey\">Google AI Studio</a>"
+    )
+    msg.setTextFormat(Qt.TextFormat.RichText)
+    msg.exec()
+    return False
 
 
 SYSTEM_PROMPT = """Bạn là trợ lý AI y tế của Hệ thống Quản lý Bệnh viện.
@@ -134,8 +154,16 @@ class ChatbotTab(QWidget):
         super().__init__()
         self._conversation = []   # [{role, content}, ...]
         self._worker  = None
+        self._key_warned = False  # prevent repeat QMessageBox warnings
         self._build_ui()
         self._apply_style()
+
+    def showEvent(self, event):
+        """Show a QMessageBox the first time this tab is displayed without a key."""
+        super().showEvent(event)
+        if not self._key_warned and GEMINI and not GEMINI_API_KEY:
+            self._key_warned = True
+            QTimer.singleShot(300, lambda: _check_gemini_key_or_warn(self))
 
     def _build_ui(self):
         layout = QVBoxLayout(self)

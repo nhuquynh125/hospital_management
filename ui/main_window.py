@@ -1,4 +1,4 @@
-"""
+﻿"""
 Hospital Management System — Main Window
 8 vai trò: admin, doctor, nurse, receptionist, pharmacist, accountant, lab_technician, director
 """
@@ -228,7 +228,17 @@ class MainWindow(QMainWindow):
             self.close()
             from ui.login_window import LoginWindow
             self._login_win = LoginWindow()
-            self._login_win.login_success.connect(lambda u: MainWindow(u).show())
+
+            # Keep a module-level reference so the GC never reclaims the new
+            # MainWindow before it is fully visible (classic PyQt GC crash).
+            import ui.main_window as _mw_module
+
+            def _on_login_success(user):
+                win = MainWindow(user)
+                _mw_module._active_main_window = win   # persistent ref
+                win.show()
+
+            self._login_win.login_success.connect(_on_login_success)
             self._login_win.show()
 
     # ── Style ────────────────────────────────────────────────────
@@ -257,3 +267,4 @@ class MainWindow(QMainWindow):
         #logoutBtn:hover { background:#742a2a20; }
         #contentArea { background:#f7fafc; }
         """)
+

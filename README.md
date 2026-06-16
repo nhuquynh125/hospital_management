@@ -1,4 +1,4 @@
-# 🏥 Hospital Management System — FULL PROJECT
+﻿# 🏥 Hospital Management System — FULL PROJECT
 
 ## Cấu trúc dự án đầy đủ
 
@@ -31,7 +31,7 @@ hospital_management/
 │   ├── export_tab.py              # 📤 Xuất báo cáo PDF/Excel
 │   ├── stats_tab.py               # 📊 Biểu đồ thống kê (Matplotlib)
 │   ├── ai_prediction_tab.py       # 🔮 AI dự đoán bệnh (scikit-learn)
-│   ├── chatbot_tab.py             # 💬 Chatbot AI (Anthropic Claude)
+│   ├── chatbot_tab.py             # 💬 Chatbot AI (Google Gemini API)
 │   └── settings_tab.py            # ⚙️ Cài đặt, Backup/Restore, Đổi mật khẩu
 │
 └── backups/                       # Thư mục backup database
@@ -105,7 +105,7 @@ python main.py
 |-----------|-------|------|
 | Dashboard biểu đồ | Bar, Pie, Horizontal bar (Matplotlib) | Nâng cao |
 | AI dự đoán bệnh | Random Forest 200 cây, 25 triệu chứng | AI |
-| Chatbot y tế | Anthropic Claude API | AI |
+| Chatbot y tế | Google Gemini API (`gemini-2.0-flash`) | AI |
 | Backup/Restore | Timestamp, auto-backup trước restore | Nâng cao |
 | Đổi mật khẩu | bcrypt verify + rehash | Nâng cao |
 
@@ -113,9 +113,13 @@ python main.py
 
 ## 💬 Cấu hình Chatbot AI
 
-1. Lấy API Key tại [console.anthropic.com](https://console.anthropic.com)
-2. Chạy app → vào tab **💬 Chatbot AI**
-3. Dán API Key vào ô nhập → click **🔑 Lưu Key**
+1. Lấy API Key miễn phí tại [aistudio.google.com](https://aistudio.google.com/app/apikey)
+2. Tạo file `.env` ở thư mục gốc dự án với nội dung:
+   ```
+   GEMINI_API_KEY=your_key_here
+   GEMINI_MODEL=gemini-2.0-flash   # tuỳ chọn
+   ```
+3. Chạy lại ứng dụng — Chatbot tự động đọc key từ `.env`.
 4. Bắt đầu đặt câu hỏi về thuốc, bệnh, quy trình y tế!
 
 ---
@@ -124,3 +128,4 @@ python main.py
 - Python 3.9+
 - Windows / macOS / Linux
 - RAM: ~256 MB (khi chạy với AI)
+

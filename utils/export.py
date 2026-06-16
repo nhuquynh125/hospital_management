@@ -1,4 +1,4 @@
-"""
+﻿"""
 Hospital Management System — Export Utility
 Xuất PDF (reportlab) và Excel (openpyxl)
 """
@@ -15,9 +15,44 @@ try:
                                      Paragraph, Spacer, HRFlowable)
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
+    import re as _re
+
+    # Register Unicode-capable font for Vietnamese + multi-lang text
+    _FONT_CANDIDATES = [
+        ("Arial",     r"C:\Windows\Fonts\arial.ttf",    r"C:\Windows\Fonts\arialbd.ttf"),
+        ("Tahoma",    r"C:\Windows\Fonts\tahoma.ttf",   r"C:\Windows\Fonts\tahomabd.ttf"),
+        ("Calibri",   r"C:\Windows\Fonts\calibri.ttf",  r"C:\Windows\Fonts\calibrib.ttf"),
+    ]
+    _PDF_FONT       = "Helvetica"          # fallback
+    _PDF_FONT_BOLD  = "Helvetica-Bold"
+
+    import os as _os
+    for _fname, _fpath, _fbold in _FONT_CANDIDATES:
+        if _os.path.isfile(_fpath):
+            try:
+                pdfmetrics.registerFont(TTFont(_fname, _fpath))
+                if _os.path.isfile(_fbold):
+                    pdfmetrics.registerFont(TTFont(f"{_fname}-Bold", _fbold))
+                    _PDF_FONT_BOLD = f"{_fname}-Bold"
+                _PDF_FONT = _fname
+            except Exception:
+                pass
+            break
+
+    def _safe_text(text: str) -> str:
+        """Strip emoji / non-BMP characters that most TTF fonts cannot render."""
+        if not isinstance(text, str):
+            text = str(text)
+        # Remove characters outside the Basic Multilingual Plane (codepoints > U+FFFF)
+        return _re.sub(r"[^\u0000-\uffff]", "", text)
+
     REPORTLAB = True
 except ImportError:
     REPORTLAB = False
+    _PDF_FONT      = "Helvetica"
+    _PDF_FONT_BOLD = "Helvetica-Bold"
+    def _safe_text(text: str) -> str:
+        return str(text) if text else ""
 
 try:
     import openpyxl
@@ -56,11 +91,13 @@ def export_patients_pdf(patients: list) -> str:
 
     # Title
     title_style = ParagraphStyle("title", parent=styles["Heading1"],
+                                  fontName=_PDF_FONT_BOLD,
                                   fontSize=16, spaceAfter=4, alignment=1)
     sub_style   = ParagraphStyle("sub", parent=styles["Normal"],
+                                  fontName=_PDF_FONT,
                                   fontSize=10, spaceAfter=12, alignment=1, textColor=colors.grey)
-    story.append(Paragraph("🏥 BỆNH VIỆN QUẢN LÝ HỆ THỐNG", title_style))
-    story.append(Paragraph(f"DANH SÁCH BỆNH NHÂN — Xuất ngày {datetime.now().strftime('%d/%m/%Y %H:%M')}", sub_style))
+    story.append(Paragraph(_safe_text("🏥 BỆNH VIỆN QUẢN LÝ HỆ THỐNG"), title_style))
+    story.append(Paragraph(_safe_text(f"DANH SÁCH BỆNH NHÂN — Xuất ngày {datetime.now().strftime('%d/%m/%Y %H:%M')}"), sub_style))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#2b6cb0")))
     story.append(Spacer(1, 0.4*cm))
 
@@ -94,7 +131,7 @@ def export_patients_pdf(patients: list) -> str:
     ]))
     story.append(tbl)
     story.append(Spacer(1, 0.4*cm))
-    story.append(Paragraph(f"Tổng cộng: {len(patients)} bệnh nhân", styles["Normal"]))
+    story.append(Paragraph(_safe_text(f"Tổng cộng: {len(patients)} bệnh nhân"), styles["Normal"]))
 
     doc.build(story)
     return filepath
@@ -115,10 +152,12 @@ def export_prescription_pdf(prescription: dict, items: list, patient_name: str, 
     styles = getSampleStyleSheet()
     story  = []
 
-    title_style = ParagraphStyle("t", parent=styles["Heading1"], fontSize=18, alignment=1, spaceAfter=2)
-    sub_style   = ParagraphStyle("s", parent=styles["Normal"], fontSize=10, alignment=1,
+    title_style = ParagraphStyle("t", parent=styles["Heading1"], fontName=_PDF_FONT_BOLD,
+                                  fontSize=18, alignment=1, spaceAfter=2)
+    sub_style   = ParagraphStyle("s", parent=styles["Normal"], fontName=_PDF_FONT,
+                                  fontSize=10, alignment=1,
                                   textColor=colors.grey, spaceAfter=10)
-    story.append(Paragraph("🏥 ĐƠN THUỐC", title_style))
+    story.append(Paragraph(_safe_text("🏥 ĐƠN THUỐC"), title_style))
     story.append(Paragraph("HOSPITAL MANAGEMENT SYSTEM", sub_style))
     story.append(HRFlowable(width="100%", thickness=1.5, color=colors.HexColor("#553c9a")))
     story.append(Spacer(1, 0.3*cm))
@@ -131,8 +170,8 @@ def export_prescription_pdf(prescription: dict, items: list, patient_name: str, 
     info_tbl = Table(info_data, colWidths=[3*cm, 7*cm, 2.5*cm, 4*cm])
     info_tbl.setStyle(TableStyle([
         ("FONTSIZE", (0,0),(-1,-1), 10),
-        ("FONTNAME", (0,0),(0,-1), "Helvetica-Bold"),
-        ("FONTNAME", (2,0),(2,-1), "Helvetica-Bold"),
+        ("FONTNAME", (0,0),(0,-1), _PDF_FONT_BOLD),
+        ("FONTNAME", (2,0),(2,-1), _PDF_FONT_BOLD),
         ("BOTTOMPADDING",(0,0),(-1,-1),4),
     ]))
     story.append(info_tbl)
@@ -284,3 +323,6 @@ def export_monthly_report_excel(stats: dict, appointments: list) -> str:
 
     wb.save(filepath)
     return filepath
+
+
+
