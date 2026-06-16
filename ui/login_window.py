@@ -94,6 +94,17 @@ class LoginWindow(QWidget):
         self.password_input.returnPressed.connect(self._on_login)
         card_layout.addWidget(self.password_input)
 
+        self.toggle_pwd_btn = QPushButton("👁")
+        self.toggle_pwd_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.toggle_pwd_btn.setFixedSize(24, 24)
+        self.toggle_pwd_btn.setToolTip("Hiện mật khẩu")
+        self.toggle_pwd_btn.setStyleSheet("QPushButton { border: none; background: transparent; font-size: 14px; }")
+        self.toggle_pwd_btn.clicked.connect(self._toggle_password)
+
+        pwd_layout = QHBoxLayout(self.password_input)
+        pwd_layout.setContentsMargins(0, 0, 8, 0)
+        pwd_layout.addWidget(self.toggle_pwd_btn, alignment=Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+
         card_layout.addSpacing(6)
 
         self.login_btn = QPushButton("Đăng nhập")
@@ -142,12 +153,23 @@ class LoginWindow(QWidget):
             self.password_input.clear()
             self.password_input.setFocus()
 
+    def _toggle_password(self):
+        if self.password_input.echoMode() == QLineEdit.EchoMode.Password:
+            self.password_input.setEchoMode(QLineEdit.EchoMode.Normal)
+            self.toggle_pwd_btn.setText("🙈")
+            self.toggle_pwd_btn.setToolTip("Ẩn mật khẩu")
+        else:
+            self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
+            self.toggle_pwd_btn.setText("👁")
+            self.toggle_pwd_btn.setToolTip("Hiện mật khẩu")
+
     def _apply_style(self):
         self.setStyleSheet("""
         QWidget {
             background-color: #f0f4f8;
             font-family: 'Segoe UI', Arial;
         }
+        QLabel { background: transparent; }
         #container { background: transparent; }
         #appName   { color: #1a365d; margin-top: 4px; }
         #subTitle  { color: #718096; font-size: 12px; }
@@ -163,7 +185,7 @@ class LoginWindow(QWidget):
         #authInput {
             border: 1.5px solid #cbd5e0;
             border-radius: 8px;
-            padding: 10px 12px;
+            padding: 10px 36px 10px 12px;
             font-size: 13px;
             background: #f7fafc;
         }

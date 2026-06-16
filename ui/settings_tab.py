@@ -114,10 +114,13 @@ class SettingsTab(QWidget):
         pl.setSpacing(8)
         self.old_pass = QLineEdit(); self.old_pass.setEchoMode(QLineEdit.EchoMode.Password)
         self.old_pass.setPlaceholderText("Mật khẩu hiện tại")
+        self._add_toggle_btn(self.old_pass)
         self.new_pass = QLineEdit(); self.new_pass.setEchoMode(QLineEdit.EchoMode.Password)
         self.new_pass.setPlaceholderText("Mật khẩu mới (tối thiểu 6 ký tự)")
+        self._add_toggle_btn(self.new_pass)
         self.conf_pass = QLineEdit(); self.conf_pass.setEchoMode(QLineEdit.EchoMode.Password)
         self.conf_pass.setPlaceholderText("Xác nhận mật khẩu mới")
+        self._add_toggle_btn(self.conf_pass)
         pl.addRow("Mật khẩu cũ:", self.old_pass)
         pl.addRow("Mật khẩu mới:", self.new_pass)
         pl.addRow("Xác nhận:",     self.conf_pass)
@@ -129,6 +132,29 @@ class SettingsTab(QWidget):
 
         row.addLayout(right_col, 1)
         layout.addLayout(row)
+
+    def _add_toggle_btn(self, line_edit):
+        btn = QPushButton("👁")
+        btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn.setFixedSize(24, 24)
+        btn.setToolTip("Hiện mật khẩu")
+        btn.setStyleSheet("QPushButton { border: none; background: transparent; font-size: 14px; }")
+        
+        layout = QHBoxLayout(line_edit)
+        layout.setContentsMargins(0, 0, 8, 0)
+        layout.addWidget(btn, alignment=Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        
+        def toggle():
+            if line_edit.echoMode() == QLineEdit.EchoMode.Password:
+                line_edit.setEchoMode(QLineEdit.EchoMode.Normal)
+                btn.setText("🙈")
+                btn.setToolTip("Ẩn mật khẩu")
+            else:
+                line_edit.setEchoMode(QLineEdit.EchoMode.Password)
+                btn.setText("👁")
+                btn.setToolTip("Hiện mật khẩu")
+        
+        btn.clicked.connect(toggle)
 
     # ── Backup/Restore ───────────────────────────────────────────
     def _do_backup(self):
@@ -250,7 +276,7 @@ class SettingsTab(QWidget):
         #fieldValue { color: #2d3748; font-size: 12px; }
         QLineEdit {
             border: 1.5px solid #cbd5e0; border-radius: 6px;
-            padding: 7px 10px; font-size: 12px; background: white;
+            padding: 7px 30px 7px 10px; font-size: 12px; background: white;
         }
         #backupBtn {
             background: #2b6cb0; color: white; border: none;
