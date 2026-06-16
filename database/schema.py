@@ -263,7 +263,10 @@ def init_db():
     _seed_users(cur, conn)
     _seed_data(cur, conn)
     conn.close()
-    print("[DB] Database initialized →", DB_PATH)
+    try:
+        print(f"[DB] Database initialized -> {DB_PATH}")
+    except UnicodeEncodeError:
+        print("[DB] Database initialized -> (path contains unicode)")
 
 
 def _seed_users(cur, conn):
