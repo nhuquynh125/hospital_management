@@ -49,9 +49,17 @@ class LoginWindow(QWidget):
         cl.setSpacing(0)
 
         # Logo
-        logo = QLabel("🏥")
+        logo = QLabel()
         logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        logo.setFont(QFont("Segoe UI", 42))
+        import os
+        from PyQt6.QtGui import QPixmap
+        logo_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'assets', 'logo.png')
+        if os.path.exists(logo_path):
+            pixmap = QPixmap(logo_path).scaled(80, 80, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+            logo.setPixmap(pixmap)
+        else:
+            logo.setText("🏥")
+            logo.setFont(QFont("Segoe UI", 42))
         cl.addWidget(logo)
 
         app_name = QLabel("Hospital Management")
