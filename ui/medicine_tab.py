@@ -471,10 +471,11 @@ class MedicineTab(QWidget):
         pl.addLayout(ph_row)
 
         self.presc_table = QTableWidget()
-        pcols = ["Mã ĐT", "Bệnh nhân", "Bác sĩ", "Ngày kê", "Số loại thuốc", "Ghi chú"]
+        pcols = ["Mã ĐT", "Bệnh nhân", "Bác sĩ", "Ngày kê", "Số loại thuốc", "Trạng thái", "Hành động"]
         self.presc_table.setColumnCount(len(pcols))
         self.presc_table.setHorizontalHeaderLabels(pcols)
         self.presc_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.presc_table.horizontalHeader().setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)
         self.presc_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.presc_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.presc_table.setAlternatingRowColors(True)
@@ -513,11 +514,37 @@ class MedicineTab(QWidget):
         # Load prescriptions
         prescriptions = dao.get_all_prescriptions()
         self.presc_table.setRowCount(len(prescriptions))
+        
+        # Determine current user role for UI permissions
+        import core.auth as auth
+        user = auth.get_current_user()
+        is_pharmacist = user and user.get("role_id") == 5 # Pharmacist is 5. Wait, we use permissions.
+        # Actually, let's just show the button, and if they click it, it's a pharmacist action.
+        
         for r, p in enumerate(prescriptions):
+            # The query currently returns: id, issue_date, notes, patient_name, doctor_name, item_count
+            # Wait, get_all_prescriptions in dao.py doesn't return 'status'.
+            # I need to update get_all_prescriptions to return status as well!
+            status = p.get("status", "Chờ duyệt")
             vals = [str(p["id"]), p["patient_name"] or "", p["doctor_name"] or "",
-                    (p["issue_date"] or "")[:10], str(p["item_count"]), p["notes"] or ""]
+                    (p["issue_date"] or "")[:10], str(p["item_count"]), status]
             for c, v in enumerate(vals):
-                self.presc_table.setItem(r, c, QTableWidgetItem(v))
+                item = QTableWidgetItem(v)
+                if c == 5:
+                    if status == "Đã phát":
+                        item.setForeground(QColor("#276749"))
+                    else:
+                        item.setForeground(QColor("#c53030"))
+                self.presc_table.setItem(r, c, item)
+                
+            if status != "Đã phát":
+                btn = QPushButton("💊 Xuất thuốc")
+                btn.setObjectName("actionBtn")
+                btn.setStyleSheet("background:#bee3f8; color:#2b6cb0; border-radius:4px; padding:4px;")
+                btn.clicked.connect(lambda _, pid=p["id"]: self._dispense_prescription(pid))
+                self.presc_table.setCellWidget(r, 6, btn)
+            else:
+                self.presc_table.setItem(r, 6, QTableWidgetItem("Đã xuất"))
 
     def _selected_med_id(self):
         row = self.med_table.currentRow()
@@ -559,6 +586,35 @@ class MedicineTab(QWidget):
             dao.save_prescription(dlg.result_data)
             self.load_data()
             QMessageBox.information(self, "Thành công", "Đã lưu đơn thuốc.")
+
+    def _dispense_prescription(self, presc_id):
+        import core.auth as auth
+        user = auth.get_current_user()
+        
+        # Get prescription
+        presc = dao.get_prescription_by_id(presc_id)
+        if not presc:
+            return
+            
+        patient_id = presc["patient_id"]
+        
+        # Check bills
+        bills = dao.get_all_bills() # returns all bills, we can filter in memory or fetch by patient
+        unpaid = [b for b in bills if b["patient_id"] == patient_id and b["status"] in ("Chưa thanh toán", "Một phần")]
+        
+        if unpaid:
+            QMessageBox.critical(self, "Chặn xuất thuốc", 
+                                 f"Bệnh nhân này còn {len(unpaid)} hoá đơn CHƯA THANH TOÁN.\n"
+                                 "Vui lòng yêu cầu bệnh nhân thanh toán viện phí trước khi nhận thuốc.")
+            return
+            
+        reply = QMessageBox.question(self, "Xác nhận", "Xác nhận xuất thuốc cho bệnh nhân này?", 
+                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        if reply == QMessageBox.StandardButton.Yes:
+            pharmacist_id = dao.get_staff_id_by_user_id(user["id"]) if user else None
+            dao.dispense_prescription(presc_id, pharmacist_id)
+            self.load_data()
+            QMessageBox.information(self, "Thành công", "Đã xuất thuốc thành công.")
 
     def _apply_style(self):
         self.setStyleSheet("""

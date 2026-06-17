@@ -1,7 +1,6 @@
 import sqlite3
 import os
 import bcrypt
-import json
 
 DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "hospital.db")
 
@@ -17,28 +16,6 @@ def init_db():
     conn = get_connection()
     cur = conn.cursor()
 
-    # ── Roles & Permissions (RBAC) ────────────────────────────────
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS roles (
-        id          INTEGER PRIMARY KEY AUTOINCREMENT,
-        role_name   TEXT UNIQUE NOT NULL,
-        description TEXT
-    )""")
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS permissions (
-        id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        permission_name TEXT UNIQUE NOT NULL,
-        description     TEXT
-    )""")
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS role_permissions (
-        role_id       INTEGER REFERENCES roles(id) ON DELETE CASCADE,
-        permission_id INTEGER REFERENCES permissions(id) ON DELETE CASCADE,
-        PRIMARY KEY (role_id, permission_id)
-    )""")
-
     # ── Users / Auth ──────────────────────────────────────────────
     cur.execute("""
     CREATE TABLE IF NOT EXISTS users (
@@ -46,7 +23,10 @@ def init_db():
         username    TEXT UNIQUE NOT NULL,
         password    TEXT NOT NULL,
         full_name   TEXT NOT NULL,
-        role_id     INTEGER REFERENCES roles(id),
+        role        TEXT NOT NULL CHECK(role IN (
+                        'admin','doctor','nurse','receptionist',
+                        'pharmacist','accountant','lab_technician','director',
+                        'cashier','department_head','hr_manager')),
         is_active   INTEGER DEFAULT 1,
         created_at  TEXT DEFAULT (datetime('now','localtime'))
     )""")
@@ -119,22 +99,6 @@ def init_db():
         notes           TEXT,
         follow_up_date  TEXT,
         created_at      TEXT DEFAULT (datetime('now','localtime'))
-    )""")
-
-    # ── Medical Orders (Y lệnh cho Y tá) ──────────────────────────
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS medical_orders (
-        id                INTEGER PRIMARY KEY AUTOINCREMENT,
-        medical_record_id INTEGER NOT NULL REFERENCES medical_records(id) ON DELETE CASCADE,
-        patient_id        INTEGER NOT NULL REFERENCES patients(id),
-        doctor_id         INTEGER REFERENCES staff(id),
-        order_type        TEXT NOT NULL,
-        description       TEXT NOT NULL,
-        order_time        TEXT DEFAULT (datetime('now','localtime')),
-        status            TEXT DEFAULT 'Pending' CHECK(status IN ('Pending','Done','Cancelled')),
-        nurse_id          INTEGER REFERENCES staff(id),
-        execution_time    TEXT,
-        notes             TEXT
     )""")
 
     # ── Nursing Care Notes (Y tá / Điều dưỡng) ───────────────────
@@ -287,14 +251,11 @@ def init_db():
         action      TEXT NOT NULL,
         table_name  TEXT,
         record_id   INTEGER,
-        old_value   TEXT,
-        new_value   TEXT,
         detail      TEXT,
         timestamp   TEXT DEFAULT (datetime('now','localtime'))
     )""")
 
     conn.commit()
-    _seed_rbac(cur, conn)
     _seed_users(cur, conn)
     _seed_data(cur, conn)
     conn.close()
@@ -304,71 +265,10 @@ def init_db():
         print("[DB] Database initialized -> (path contains unicode)")
 
 
-def _seed_rbac(cur, conn):
-    # Check if roles exist
-    cur.execute("SELECT COUNT(*) FROM roles")
-    if cur.fetchone()[0] > 0:
-        return
-
-    roles = [
-        ("admin", "Quản trị viên"),
-        ("doctor", "Bác sĩ"),
-        ("nurse", "Y tá / Điều dưỡng"),
-        ("receptionist", "Lễ tân"),
-        ("pharmacist", "Dược sĩ"),
-        ("accountant", "Kế toán"),
-        ("lab_technician", "Xét nghiệm viên"),
-        ("director", "Giám đốc"),
-        ("cashier", "Thu ngân"),
-        ("department_head", "Trưởng khoa"),
-        ("hr_manager", "Quản lý nhân sự")
-    ]
-    cur.executemany("INSERT INTO roles (role_name, description) VALUES (?,?)", roles)
-
-    permissions = [
-        "patients", "staff", "appointments", "medical_records", "medical_orders",
-        "medicines", "pharmacy", "rooms", "billing", "lab", "reports", "export", 
-        "settings", "ai", "audit_logs"
-    ]
-    cur.executemany("INSERT INTO permissions (permission_name) VALUES (?)", [(p,) for p in permissions])
-
-    # Mapping roles to permissions
-    role_perms = {
-        "admin": ["staff", "settings", "audit_logs", "billing"], # Billing just to see issues, no medical records
-        "doctor": ["patients", "appointments", "medical_records", "medicines", "lab", "reports", "export", "ai"],
-        "nurse": ["patients", "appointments", "medical_records", "medical_orders", "rooms", "reports", "ai"],
-        "receptionist": ["patients", "appointments", "rooms", "billing", "reports"],
-        "pharmacist": ["medicines", "pharmacy", "reports", "ai"],
-        "accountant": ["billing", "reports", "export"],
-        "lab_technician": ["lab", "reports", "ai"],
-        "director": ["patients", "staff", "appointments", "rooms", "reports", "export", "ai", "billing"],
-        "cashier": ["billing"],
-        "department_head": ["patients", "appointments", "medical_records", "medicines", "lab", "reports", "export", "ai", "staff"],
-        "hr_manager": ["staff", "export"]
-    }
-
-    # Fetch IDs
-    cur.execute("SELECT id, role_name FROM roles")
-    role_map = {row['role_name']: row['id'] for row in cur.fetchall()}
-    cur.execute("SELECT id, permission_name FROM permissions")
-    perm_map = {row['permission_name']: row['id'] for row in cur.fetchall()}
-
-    for role_name, perms in role_perms.items():
-        role_id = role_map[role_name]
-        for p in perms:
-            perm_id = perm_map[p]
-            cur.execute("INSERT INTO role_permissions (role_id, permission_id) VALUES (?,?)", (role_id, perm_id))
-    
-    conn.commit()
-
-
 def _seed_users(cur, conn):
     cur.execute("SELECT id FROM users WHERE username='admin'")
     if cur.fetchone():
         return
-
-    cur.execute("SELECT id, role_name FROM roles")
-    role_map = {row['role_name']: row['id'] for row in cur.fetchall()}
 
     demo_accounts = [
         ("admin",        "admin123",   "Quản trị viên",         "admin"),
@@ -383,13 +283,12 @@ def _seed_users(cur, conn):
         ("truongkhoa01", "head123",    "TK. Phạm Văn B",        "department_head"),
         ("nhansu01",     "hr123",      "HR. Lê Thị C",          "hr_manager"),
     ]
-    for username, password, full_name, role_name in demo_accounts:
+    for username, password, full_name, role in demo_accounts:
         hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-        role_id = role_map[role_name]
         cur.execute("""
-            INSERT INTO users (username, password, full_name, role_id)
+            INSERT INTO users (username, password, full_name, role)
             VALUES (?,?,?,?)
-        """, (username, hashed, full_name, role_id))
+        """, (username, hashed, full_name, role))
     conn.commit()
 
 

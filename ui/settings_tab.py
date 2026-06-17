@@ -124,10 +124,44 @@ class SettingsTab(QWidget):
         change_btn.setObjectName("primaryBtn")
         change_btn.clicked.connect(self._change_password)
         pl.addRow("", change_btn)
+        # Create Account for Staff
+        account_group = QGroupBox("👤 Cấp tài khoản nhân viên")
+        account_group.setObjectName("groupBox")
+        al = QFormLayout(account_group)
+        al.setSpacing(8)
+        
+        self.staff_cb = QComboBox()
+        self.staff_cb.addItem("-- Chọn nhân viên --", None)
+        
+        self.role_cb = QComboBox()
+        for r in dao.get_all_roles():
+            self.role_cb.addItem(r["role_name"], r["id"])
+            
+        self.new_username = QLineEdit()
+        self.new_username.setPlaceholderText("Tên đăng nhập")
+        
+        self.new_user_pass = QLineEdit()
+        self.new_user_pass.setEchoMode(QLineEdit.EchoMode.Password)
+        self.new_user_pass.setPlaceholderText("Mật khẩu")
+        self._add_toggle_btn(self.new_user_pass)
+        
+        al.addRow("Nhân viên:", self.staff_cb)
+        al.addRow("Vai trò:", self.role_cb)
+        al.addRow("Tài khoản:", self.new_username)
+        al.addRow("Mật khẩu:", self.new_user_pass)
+        
+        create_acc_btn = QPushButton("✨ Tạo tài khoản")
+        create_acc_btn.setObjectName("primaryBtn")
+        create_acc_btn.clicked.connect(self._create_user_account)
+        al.addRow("", create_acc_btn)
+        
         right_col.addWidget(pass_group)
+        right_col.addWidget(account_group)
 
         row.addLayout(right_col, 1)
         layout.addLayout(row)
+        
+        self._load_staff_without_accounts()
 
     def _add_toggle_btn(self, line_edit):
         btn = QPushButton("👁")
@@ -239,6 +273,43 @@ class SettingsTab(QWidget):
 
         self.old_pass.clear(); self.new_pass.clear(); self.conf_pass.clear()
         QMessageBox.information(self, "✅ Thành công", "Mật khẩu đã được đổi thành công.")
+
+    # ── User Accounts ────────────────────────────────────────────
+    def _load_staff_without_accounts(self):
+        self.staff_cb.clear()
+        self.staff_cb.addItem("-- Chọn nhân viên --", None)
+        for s in dao.get_staff_without_accounts():
+            self.staff_cb.addItem(f"{s['staff_code']} - {s['full_name']} ({s['position']})", s['id'])
+
+    def _create_user_account(self):
+        import bcrypt
+        staff_id = self.staff_cb.currentData()
+        role_id = self.role_cb.currentData()
+        username = self.new_username.text().strip()
+        password = self.new_user_pass.text()
+
+        if not staff_id:
+            QMessageBox.warning(self, "Lỗi", "Vui lòng chọn nhân viên.")
+            return
+        if not username or not password:
+            QMessageBox.warning(self, "Lỗi", "Vui lòng nhập tên đăng nhập và mật khẩu.")
+            return
+        if len(password) < 6:
+            QMessageBox.warning(self, "Lỗi", "Mật khẩu phải có ít nhất 6 ký tự.")
+            return
+
+        hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+        
+        try:
+            dao.create_user_for_staff(staff_id, username, hashed, role_id)
+            QMessageBox.information(self, "Thành công", f"Đã tạo tài khoản '{username}' cho nhân viên.")
+            self.new_username.clear()
+            self.new_user_pass.clear()
+            self._load_staff_without_accounts()
+        except ValueError as e:
+            QMessageBox.warning(self, "Lỗi", str(e))
+        except Exception as e:
+            QMessageBox.critical(self, "Lỗi", f"Có lỗi xảy ra: {e}")
 
     # ── Helper ───────────────────────────────────────────────────
     def _get_db_size(self):

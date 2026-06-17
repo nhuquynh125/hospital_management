@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QFrame, QComboBox, QGridLayout, QSizePolicy, QTabWidget
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
 
 import database.dao as dao
@@ -46,6 +46,9 @@ class StatsTab(QWidget):
         self._apply_style()
         if MATPLOTLIB:
             self._draw_all_charts()
+            self._timer = QTimer(self)
+            self._timer.timeout.connect(self._draw_all_charts)
+            self._timer.start(30000)
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
@@ -120,6 +123,13 @@ class StatsTab(QWidget):
         t3l.addWidget(self.canvas_medicine)
         chart_tabs.addTab(tab3, "💊 Tồn kho thuốc")
 
+        # Tab 4: Revenue
+        tab4 = QWidget()
+        t4l = QVBoxLayout(tab4)
+        self.canvas_revenue = MplCanvas(width=9, height=3.5)
+        t4l.addWidget(self.canvas_revenue)
+        chart_tabs.addTab(tab4, "💰 Doanh thu")
+
         layout.addWidget(chart_tabs)
 
     def _make_kpi_card(self, icon, label, value, color, bg):
@@ -153,6 +163,7 @@ class StatsTab(QWidget):
         self._draw_appointments_by_doctor()
         self._draw_room_status()
         self._draw_medicine_stock()
+        self._draw_revenue_chart()
 
     def _update_kpis(self):
         stats = dao.get_dashboard_stats()
@@ -289,6 +300,35 @@ class StatsTab(QWidget):
             ax.set_facecolor("#f7fafc")
         self.canvas_medicine.fig.tight_layout()
         self.canvas_medicine.draw()
+
+    def _draw_revenue_chart(self):
+        data = dao.get_revenue_by_month()
+        ax = self.canvas_revenue.axes
+        ax.clear()
+        if not data:
+            ax.text(0.5, 0.5, "Chưa có dữ liệu doanh thu", ha="center", va="center",
+                    transform=ax.transAxes, color="#a0aec0", fontsize=12)
+        else:
+            labels = [d[0] for d in data]
+            values = [d[1] / 1_000_000 for d in data]
+            
+            ax.bar(labels, values, color="#9ae6b4", edgecolor="white", alpha=0.6, label="Doanh thu (Triệu VNĐ)")
+            ax.plot(labels, values, color="#276749", marker="o", linewidth=2)
+            
+            ax.set_title("Doanh thu theo tháng (Triệu VNĐ)", fontsize=11, fontweight="bold", pad=10)
+            ax.set_ylabel("Triệu VNĐ", fontsize=9)
+            ax.tick_params(axis="x", rotation=30, labelsize=8)
+            ax.tick_params(axis="y", labelsize=8)
+            ax.spines["top"].set_visible(False)
+            ax.spines["right"].set_visible(False)
+            ax.set_facecolor("#f7fafc")
+            
+            for i, v in enumerate(values):
+                offset = max(values)*0.02 if max(values) > 0 else 1
+                ax.text(i, v + offset, f"{v:,.1f}", ha="center", va="bottom", fontsize=8, color="#2d3748")
+        
+        self.canvas_revenue.fig.tight_layout()
+        self.canvas_revenue.draw()
 
     def _apply_style(self):
         self.setStyleSheet("""

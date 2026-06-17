@@ -1,4 +1,4 @@
-﻿import json
+import json
 from datetime import datetime
 
 from PyQt6.QtWidgets import (
@@ -452,19 +452,40 @@ class PrescriptionTab(QWidget):
         self._check_interactions()
 
     def _check_interactions(self):
-        if len(self.rx_items) < 2:
+        self.warn_lbl.clear()
+        if not self.rx_items:
             self.warn_frame.hide(); return
-        med_ids  = [i["medicine_id"] for i in self.rx_items]
-        warnings = dao.check_drug_interactions(med_ids)
-        if not warnings:
-            self.warn_frame.hide(); return
+
         msgs = []
         has_danger = False
-        for w in warnings:
-            sev = w["severity"]
-            icon = "🔴" if sev == "Nguy hiểm" else "🟡" if sev == "Thận trọng" else "🔵"
-            msgs.append(f"{icon} <b>{w['med1']} + {w['med2']}</b> — {sev}: {w['description'] or ''}")
-            if sev == "Nguy hiểm": has_danger = True
+
+        # 1. Allergy check
+        allergies_str = (self.patient.get("allergies") or "").lower()
+        import re
+        allergies = [a.strip() for a in re.split(r'[,;]+', allergies_str) if a.strip()]
+        
+        for item in self.rx_items:
+            med_info = next((m for m in self.medicines if m["id"] == item["medicine_id"]), None)
+            if med_info:
+                med_text = f"{med_info['name']} {med_info['generic_name']} {med_info['category']}".lower()
+                for allergy in allergies:
+                    if len(allergy) > 2 and allergy in med_text:
+                        msgs.append(f"🔴 <b>CẢNH BÁO DỊ ỨNG:</b> Bệnh nhân dị ứng '{allergy}' -> <b>{med_info['name']}</b>")
+                        has_danger = True
+
+        # 2. Drug interactions
+        if len(self.rx_items) >= 2:
+            med_ids  = [i["medicine_id"] for i in self.rx_items]
+            warnings = dao.check_drug_interactions(med_ids)
+            for w in warnings:
+                sev = w["severity"]
+                icon = "🔴" if sev == "Nguy hiểm" else "🟡" if sev == "Thận trọng" else "🔵"
+                msgs.append(f"{icon} <b>{w['med1']} + {w['med2']}</b> — {sev}: {w['description'] or ''}")
+                if sev == "Nguy hiểm": has_danger = True
+
+        if not msgs:
+            self.warn_frame.hide(); return
+
         self.warn_lbl.setText("<br>".join(msgs))
         color = "#c53030" if has_danger else "#856404"
         bg    = "#fff5f5" if has_danger else "#fffbeb"
@@ -606,16 +627,32 @@ class ExaminationDialog(QDialog):
         lab_data  = self.lab_tab.get_orders()
         rx_data   = self.rx_tab.get_data()
 
-        # Warn dangerous interactions
+        # Warn dangerous interactions and allergies
         if rx_data["items"]:
+            danger_msgs = []
             med_ids  = [i["medicine_id"] for i in rx_data["items"]]
+            
+            allergies_str = (self.patient.get("allergies") or "").lower()
+            import re
+            allergies = [a.strip() for a in re.split(r'[,;]+', allergies_str) if a.strip()]
+            for item in rx_data["items"]:
+                med_info = next((m for m in self.rx_tab.medicines if m["id"] == item["medicine_id"]), None)
+                if med_info:
+                    med_text = f"{med_info['name']} {med_info['generic_name']} {med_info['category']}".lower()
+                    for allergy in allergies:
+                        if len(allergy) > 2 and allergy in med_text:
+                            danger_msgs.append(f"- Dị ứng '{allergy}' với {med_info['name']}")
+                            
             warnings = dao.check_drug_interactions(med_ids)
-            danger   = [w for w in warnings if w["severity"] == "Nguy hiểm"]
-            if danger:
+            for w in warnings:
+                if w["severity"] == "Nguy hiểm":
+                    danger_msgs.append(f"- {w['med1']} + {w['med2']}: {w['description']}")
+            
+            if danger_msgs:
                 reply = QMessageBox.warning(
-                    self, "⚠️ Tương tác thuốc NGUY HIỂM",
-                    f"Phát hiện {len(danger)} tương tác nguy hiểm trong đơn thuốc!\n"
-                    "Bạn có chắc muốn lưu đơn này không?",
+                    self, "⚠️ CẢNH BÁO NGUY HIỂM",
+                    "Phát hiện cảnh báo nguy hiểm hoặc dị ứng thuốc:\n" + "\n".join(danger_msgs) +
+                    "\n\nBạn có chắc muốn lưu đơn này không?",
                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
                 )
                 if reply != QMessageBox.StandardButton.Yes:

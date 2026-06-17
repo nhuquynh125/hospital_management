@@ -1,4 +1,4 @@
-﻿# 🏥 Hospital Management System — FULL PROJECT
+# 🏥 Hospital Management System — FULL PROJECT
 
 ## Cấu trúc dự án đầy đủ
 
@@ -52,11 +52,19 @@ python main.py
 ```
 
 ### Bước 3 — Đăng nhập demo
-| Username  | Password    | Vai trò        | Quyền truy cập                        |
-|-----------|-------------|----------------|---------------------------------------|
-| admin     | admin123    | Quản trị viên  | Toàn bộ tính năng                     |
-| bacsi01   | doctor123   | Bác sĩ         | Bệnh nhân, Lịch hẹn, Thuốc, Thống kê |
-| letan01   | recept123   | Lễ tân         | Bệnh nhân, Lịch hẹn, Báo cáo         |
+| Username    | Password    | Vai trò         | Quyền truy cập                        |
+|-------------|-------------|-----------------|---------------------------------------|
+| admin       | admin123    | Quản trị viên   | Toàn bộ tính năng                     |
+| bacsi01     | doctor123   | Bác sĩ          | Bệnh nhân, Lịch hẹn, Thuốc, Thống kê  |
+| nurse01     | nurse123    | Y tá / Điều dưỡng| Bệnh nhân, Lịch hẹn, Chăm sóc         |
+| letan01     | recept123   | Lễ tân          | Bệnh nhân, Lịch hẹn, Báo cáo          |
+| duocsi01    | pharma123   | Dược sĩ         | Kho thuốc, Đơn thuốc, Tương tác thuốc |
+| ketoan01    | acc123      | Kế toán         | Viện phí, Thanh toán, Báo cáo         |
+| xetnghiem01 | lab123      | Xét nghiệm viên | Xét nghiệm, Cận lâm sàng              |
+| giamdoc     | director123 | Giám đốc        | Thống kê tổng hợp, Quản lý nhân sự    |
+| thungan01   | cashier123  | Thu ngân        | Xử lý thanh toán, In hóa đơn          |
+| truongkhoa01| head123     | Trưởng khoa     | Quản lý khoa, Lịch hẹn, Bệnh án       |
+| nhansu01    | hr123       | Quản lý nhân sự | Hồ sơ nhân sự, Chấm công              |
 
 ---
 

@@ -1,8 +1,10 @@
 import bcrypt
 from database.dao import get_user_by_username, log_action
+from database.schema import get_connection
 
 # ── Singleton: current logged-in user ──────────────────────
 _current_user = None
+_current_permissions = set()
 
 # ── Role definitions ────────────────────────────────────────
 ROLES = {
@@ -13,63 +15,48 @@ ROLES = {
     "pharmacist":     "Dược sĩ",
     "accountant":     "Kế toán",
     "lab_technician": "Xét nghiệm viên",
-    "director":       "Giám đốc / Trưởng khoa",
+    "director":       "Giám đốc",
+    "cashier":        "Thu ngân",
+    "department_head":"Trưởng khoa",
+    "hr_manager":     "Quản lý nhân sự",
 }
 
 ROLE_LABELS = {v: k for k, v in ROLES.items()}  # reverse lookup
 
-# ── Permission map ──────────────────────────────────────────
-# module → set of roles that can access
-PERMISSIONS = {
-    # Xem & quản lý bệnh nhân
-    "patients":        {"admin", "doctor", "nurse", "receptionist", "director"},
-    # Quản lý nhân viên
-    "staff":           {"admin", "director"},
-    # Lịch hẹn
-    "appointments":    {"admin", "doctor", "nurse", "receptionist", "director"},
-    # Hồ sơ bệnh án / Medical records
-    "medical_records": {"admin", "doctor", "nurse"},
-    # Thuốc & kê đơn
-    "medicines":       {"admin", "doctor", "pharmacist"},
-    # Kho thuốc (chỉ dược sĩ + admin quản lý tồn kho)
-    "pharmacy":        {"admin", "pharmacist"},
-    # Phòng / Giường bệnh
-    "rooms":           {"admin", "nurse", "receptionist", "director"},
-    # Viện phí / Thanh toán
-    "billing":         {"admin", "accountant", "receptionist"},
-    # Xét nghiệm
-    "lab":             {"admin", "doctor", "lab_technician"},
-    # Báo cáo / Thống kê (chỉ xem)
-    "reports":         {"admin", "director", "doctor", "accountant",
-                        "pharmacist", "lab_technician", "nurse", "receptionist"},
-    # Xuất file
-    "export":          {"admin", "director", "accountant", "doctor"},
-    # Cài đặt & backup
-    "settings":        {"admin"},
-    # Chatbot AI
-    "ai":              {"admin", "doctor", "nurse", "pharmacist", "lab_technician", "director"},
-}
+
+def load_user_permissions(role_id):
+    conn = get_connection()
+    rows = conn.execute("""
+        SELECT p.permission_name
+        FROM role_permissions rp
+        JOIN permissions p ON rp.permission_id = p.id
+        WHERE rp.role_id = ?
+    """, (role_id,)).fetchall()
+    conn.close()
+    return {row["permission_name"] for row in rows}
 
 
 def login(username: str, password: str):
-    global _current_user
+    global _current_user, _current_permissions
     row = get_user_by_username(username.strip())
     if not row:
         return None
     stored_hash = row["password"].encode()
     if bcrypt.checkpw(password.encode(), stored_hash):
         _current_user = dict(row)
+        _current_permissions = load_user_permissions(_current_user["role_id"])
         log_action(row["id"], "LOGIN", detail=f"User '{username}' logged in")
         return _current_user
     return None
 
 
 def logout():
-    global _current_user
+    global _current_user, _current_permissions
     if _current_user:
         log_action(_current_user["id"], "LOGOUT",
                    detail=f"User '{_current_user['username']}' logged out")
     _current_user = None
+    _current_permissions = set()
 
 
 def get_current_user():
@@ -81,10 +68,9 @@ def get_role_label(role_key: str) -> str:
 
 
 def can_access(module: str) -> bool:
-    user = get_current_user()
-    if not user:
+    if not _current_user:
         return False
-    return user["role"] in PERMISSIONS.get(module, set())
+    return module in _current_permissions
 
 
 def require_role(*roles):

@@ -1,4 +1,4 @@
-﻿import sqlite3
+import sqlite3
 from database.schema import get_connection
 from datetime import datetime
 
@@ -8,9 +8,12 @@ from datetime import datetime
 # ═══════════════════════════════════════════════════════════
 def get_user_by_username(username: str):
     conn = get_connection()
-    row = conn.execute(
-        "SELECT * FROM users WHERE username=? AND is_active=1", (username,)
-    ).fetchone()
+    row = conn.execute("""
+        SELECT u.*, r.role_name AS role
+        FROM users u
+        LEFT JOIN roles r ON u.role_id = r.id
+        WHERE u.username=? AND u.is_active=1
+    """, (username,)).fetchone()
     conn.close()
     return row
 
@@ -27,15 +30,58 @@ def get_staff_id_by_user_id(user_id: int):
     return row["id"] if row else None
 
 
-def log_action(user_id, action, table_name=None, record_id=None, detail=None):
+def log_action(user_id, action, table_name=None, record_id=None, old_value=None, new_value=None, detail=None):
     conn = get_connection()
     conn.execute("""
-        INSERT INTO audit_log (user_id, action, table_name, record_id, detail)
-        VALUES (?,?,?,?,?)
-    """, (user_id, action, table_name, record_id, detail))
+        INSERT INTO audit_log (user_id, action, table_name, record_id, old_value, new_value, detail)
+        VALUES (?,?,?,?,?,?,?)
+    """, (user_id, action, table_name, record_id, old_value, new_value, detail))
     conn.commit()
     conn.close()
 
+
+# ═══════════════════════════════════════════════════════════
+#  USERS & ACCOUNT MANAGEMENT
+# ═══════════════════════════════════════════════════════════
+def get_staff_without_accounts():
+    conn = get_connection()
+    rows = conn.execute("""
+        SELECT s.id, s.staff_code, s.full_name, s.position
+        FROM staff s
+        WHERE s.user_id IS NULL AND s.is_active=1
+    """).fetchall()
+    conn.close()
+    return rows
+
+def create_user_for_staff(staff_id: int, username: str, password_hash: str, role_id: int):
+    conn = get_connection()
+    try:
+        # Check if username exists
+        if conn.execute("SELECT id FROM users WHERE username=?", (username,)).fetchone():
+            raise ValueError("Tên đăng nhập đã tồn tại")
+        
+        staff = conn.execute("SELECT full_name FROM staff WHERE id=?", (staff_id,)).fetchone()
+        
+        cur = conn.execute("""
+            INSERT INTO users (username, password, full_name, role_id)
+            VALUES (?, ?, ?, ?)
+        """, (username, password_hash, staff["full_name"], role_id))
+        
+        new_user_id = cur.lastrowid
+        
+        conn.execute("UPDATE staff SET user_id=? WHERE id=?", (new_user_id, staff_id))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
+def get_all_roles():
+    conn = get_connection()
+    rows = conn.execute("SELECT * FROM roles ORDER BY id").fetchall()
+    conn.close()
+    return rows
 
 # ═══════════════════════════════════════════════════════════
 #  PATIENTS
@@ -655,7 +701,7 @@ def save_prescription(data: dict) -> int:
 def get_all_prescriptions():
     conn = get_connection()
     rows = conn.execute("""
-        SELECT pr.id, pr.issue_date, pr.notes,
+        SELECT pr.id, pr.issue_date, pr.notes, pr.status,
                p.full_name AS patient_name,
                s.full_name AS doctor_name,
                COUNT(pi.id) AS item_count
@@ -669,6 +715,27 @@ def get_all_prescriptions():
     """).fetchall()
     conn.close()
     return rows
+
+def get_prescription_by_id(presc_id: int):
+    conn = get_connection()
+    row = conn.execute("""
+        SELECT pr.*, mr.patient_id
+        FROM prescriptions pr
+        LEFT JOIN medical_records mr ON pr.medical_record_id = mr.id
+        WHERE pr.id = ?
+    """, (presc_id,)).fetchone()
+    conn.close()
+    return row
+
+def dispense_prescription(presc_id: int, pharmacist_id: int):
+    conn = get_connection()
+    from datetime import datetime
+    conn.execute("""
+        UPDATE prescriptions SET status='Đã phát', pharmacist_id=?, dispensed_date=?
+        WHERE id=?
+    """, (pharmacist_id, datetime.now().strftime("%Y-%m-%d %H:%M"), presc_id))
+    conn.commit()
+    conn.close()
 
 
 def get_prescription_items(presc_id: int):
@@ -730,6 +797,21 @@ def get_appointments_by_doctor():
     """).fetchall()
     conn.close()
     return [(r["full_name"], r["cnt"]) for r in rows]
+
+
+def get_revenue_by_month(months: int = 12):
+    """Return (month_label, revenue) for last N months based on paid bills."""
+    conn = get_connection()
+    rows = conn.execute("""
+        SELECT strftime('%m/%Y', bill_date) AS month,
+               SUM(paid_amount) AS total_rev
+        FROM bills
+        WHERE status != 'Huỷ' AND bill_date >= date('now', ?)
+        GROUP BY month
+        ORDER BY bill_date
+    """, (f"-{months} months",)).fetchall()
+    conn.close()
+    return [(r["month"], r["total_rev"] or 0) for r in rows]
 
 
 # ═══════════════════════════════════════════════════════════
@@ -913,8 +995,257 @@ def update_bill(bid: int, data: dict):
     finally:
         conn.close()
 
+"""Return (month_label, revenue) for last N months based on paid bills."""
+    conn = get_connection()
+    rows = conn.execute("""
+        SELECT strftime('%m/%Y', bill_date) AS month,
+               SUM(paid_amount) AS total_rev
+        FROM bills
+        WHERE status != 'Huỷ' AND bill_date >= date('now', ?)
+        GROUP BY month
+        ORDER BY bill_date
+    """, (f"-{months} months",)).fetchall()
+    conn.close()
+    return [(r["month"], r["total_rev"] or 0) for r in rows]
+
+
+# ═══════════════════════════════════════════════════════════
+#  NURSING NOTES
+# ═══════════════════════════════════════════════════════════
+def get_nursing_notes(search="", status_filter=""):
+    conn = get_connection()
+    query = """
+        SELECT nn.*, p.full_name AS patient_name, s.full_name AS nurse_name
+        FROM nursing_notes nn
+        LEFT JOIN patients p ON nn.patient_id = p.id
+        LEFT JOIN staff    s ON nn.nurse_id   = s.id
+        WHERE 1=1
+    """
+    params = []
+    if search:
+        query += " AND p.full_name LIKE ?"
+        params.append(f"%{search}%")
+    if status_filter:
+        query += " AND nn.patient_status=?"
+        params.append(status_filter)
+    query += " ORDER BY nn.note_date DESC"
+    rows = conn.execute(query, params).fetchall()
+    conn.close()
+    return rows
+
+def get_nursing_note_by_id(nid):
+    conn = get_connection()
+    row = conn.execute("SELECT * FROM nursing_notes WHERE id=?", (nid,)).fetchone()
+    conn.close()
+    return row
+
+def add_nursing_note(data: dict) -> int:
+    conn = get_connection()
+    cur = conn.execute("""
+        INSERT INTO nursing_notes (patient_id, nurse_id, note_date, vital_signs,
+            care_given, patient_status, notes)
+        VALUES (?,?,?,?,?,?,?)
+    """, (data["patient_id"], data.get("nurse_id"), data.get("note_date"),
+          data.get("vital_signs"), data.get("care_given"),
+          data.get("patient_status"), data.get("notes")))
+    conn.commit(); nid = cur.lastrowid; conn.close()
+    return nid
+
+def update_nursing_note(nid: int, data: dict):
+    conn = get_connection()
+    conn.execute("""
+        UPDATE nursing_notes SET vital_signs=?, care_given=?, patient_status=?, notes=?
+        WHERE id=?
+    """, (data.get("vital_signs"), data.get("care_given"),
+          data.get("patient_status"), data.get("notes"), nid))
+    conn.commit(); conn.close()
+
+
+# ═══════════════════════════════════════════════════════════
+#  MEDICAL ORDERS (Y lệnh)
+# ═══════════════════════════════════════════════════════════
+def get_medical_orders(search="", status_filter=""):
+    conn = get_connection()
+    query = """
+        SELECT mo.*, p.full_name AS patient_name, d.full_name AS doctor_name, n.full_name AS nurse_name, p.patient_code
+        FROM medical_orders mo
+        LEFT JOIN patients p ON mo.patient_id = p.id
+        LEFT JOIN staff d ON mo.doctor_id = d.id
+        LEFT JOIN staff n ON mo.nurse_id = n.id
+        WHERE 1=1
+    """
+    params = []
+    if search:
+        query += " AND p.full_name LIKE ?"
+        params.append(f"%{search}%")
+    if status_filter:
+        query += " AND mo.status=?"
+        params.append(status_filter)
+    query += " ORDER BY mo.order_time DESC"
+    rows = conn.execute(query, params).fetchall()
+    conn.close()
+    return rows
+
+def update_medical_order_status(order_id: int, status: str, nurse_id: int = None, notes: str = None):
+    conn = get_connection()
+    from datetime import datetime
+    conn.execute("""
+        UPDATE medical_orders SET status=?, nurse_id=?, execution_time=?, notes=?
+        WHERE id=?
+    """, (status, nurse_id, datetime.now().strftime("%Y-%m-%d %H:%M") if status == 'Done' else None, notes, order_id))
+    conn.commit()
+    conn.close()
+
+def add_medical_order(data: dict) -> int:
+    conn = get_connection()
+    cur = conn.execute("""
+        INSERT INTO medical_orders (medical_record_id, patient_id, doctor_id, order_type, description, status)
+        VALUES (?,?,?,?,?,?)
+    """, (data["medical_record_id"], data["patient_id"], data.get("doctor_id"),
+          data["order_type"], data["description"], data.get("status", "Pending")))
+    conn.commit()
+    oid = cur.lastrowid
+    conn.close()
+    return oid
+
+
+# ═══════════════════════════════════════════════════════════
+#  LAB TESTS
+# ═══════════════════════════════════════════════════════════
+def get_all_lab_tests(search="", status_filter=""):
+    conn = get_connection()
+    query = """
+        SELECT lt.*,
+               p.full_name AS patient_name,
+               d.full_name AS doctor_name,
+               t.full_name AS technician_name
+        FROM lab_tests lt
+        LEFT JOIN patients p ON lt.patient_id    = p.id
+        LEFT JOIN staff    d ON lt.doctor_id     = d.id
+        LEFT JOIN staff    t ON lt.technician_id = t.id
+        WHERE 1=1
+    """
+    params = []
+    if search:
+        query += " AND (p.full_name LIKE ? OR lt.test_type LIKE ?)"
+        like = f"%{search}%"; params += [like, like]
+    if status_filter:
+        query += " AND lt.status=?"; params.append(status_filter)
+    query += " ORDER BY lt.ordered_date DESC"
+    rows = conn.execute(query, params).fetchall()
+    conn.close(); return rows
+
+def get_lab_test_by_id(tid):
+    conn = get_connection()
+    row = conn.execute("SELECT * FROM lab_tests WHERE id=?", (tid,)).fetchone()
+    conn.close(); return row
+
+def add_lab_test(data: dict) -> int:
+    conn = get_connection()
+    cur = conn.execute("""
+        INSERT INTO lab_tests (patient_id, doctor_id, technician_id, test_type,
+            ordered_date, result_date, result, status, notes)
+        VALUES (?,?,?,?,?,?,?,?,?)
+    """, (data.get("patient_id"), data.get("doctor_id"), data.get("technician_id"),
+          data.get("test_type"), data.get("ordered_date"), data.get("result_date"),
+          data.get("result"), data.get("status","Chờ"), data.get("notes")))
+    conn.commit(); tid = cur.lastrowid; conn.close(); return tid
+
+def update_lab_test(tid: int, data: dict):
+    conn = get_connection()
+    conn.execute("""
+        UPDATE lab_tests SET technician_id=?, result_date=?, result=?, status=?, notes=?
+        WHERE id=?
+    """, (data.get("technician_id"), data.get("result_date"), data.get("result"),
+          data.get("status"), data.get("notes"), tid))
+    conn.commit(); conn.close()
+
+
+# ═══════════════════════════════════════════════════════════
+#  BILLING
+# ═══════════════════════════════════════════════════════════
+def get_all_bills(search="", status_filter=""):
+    conn = get_connection()
+    query = """
+        SELECT b.*, p.full_name AS patient_name
+        FROM bills b LEFT JOIN patients p ON b.patient_id=p.id
+        WHERE 1=1
+    """
+    params = []
+    if search:
+        query += " AND p.full_name LIKE ?"; params.append(f"%{search}%")
+    if status_filter:
+        query += " AND b.status=?"; params.append(status_filter)
+    query += " ORDER BY b.bill_date DESC"
+    rows = conn.execute(query, params).fetchall()
+    conn.close(); return rows
+
+def get_bill_by_id(bid):
+    conn = get_connection()
+    row = conn.execute("SELECT * FROM bills WHERE id=?", (bid,)).fetchone()
+    conn.close(); return row
+
+def get_bill_items(bid):
+    conn = get_connection()
+    rows = conn.execute("SELECT * FROM bill_items WHERE bill_id=?", (bid,)).fetchall()
+    conn.close(); return rows
+
+def add_bill(data: dict) -> int:
+    conn = get_connection()
+    cur = conn.execute("""
+        INSERT INTO bills (patient_id, accountant_id, total_amount, paid_amount,
+            discount, insurance_cover, payment_method, status, notes)
+        VALUES (?,?,?,?,?,?,?,?,?)
+    """, (data["patient_id"], data.get("accountant_id"), data.get("total_amount",0),
+          data.get("paid_amount",0), data.get("discount",0),
+          data.get("insurance_cover",0), data.get("payment_method"),
+          data.get("status","Chưa thanh toán"), data.get("notes")))
+    bid = cur.lastrowid
+    for item in data.get("items",[]):
+        conn.execute("""
+            INSERT INTO bill_items (bill_id, item_type, description, quantity, unit_price, total)
+            VALUES (?,?,?,?,?,?)
+        """, (bid, item["item_type"], item["description"],
+              item["quantity"], item["unit_price"], item["total"]))
+    conn.commit(); conn.close(); return bid
+
+def update_bill(bid: int, data: dict):
+    """Update bill header AND fully sync its bill_items in one transaction."""
+    conn = get_connection()
+    try:
+        conn.execute("""
+            UPDATE bills SET total_amount=?, paid_amount=?, discount=?,
+                insurance_cover=?, payment_method=?, status=?, notes=?
+            WHERE id=?
+        """, (data.get("total_amount", 0), data.get("paid_amount", 0),
+              data.get("discount", 0), data.get("insurance_cover", 0),
+              data.get("payment_method"), data.get("status"),
+              data.get("notes"), bid))
+
+        # Sync items: delete all old rows, re-insert current list
+        conn.execute("DELETE FROM bill_items WHERE bill_id=?", (bid,))
+        for item in data.get("items", []):
+            conn.execute("""
+                INSERT INTO bill_items (bill_id, item_type, description, quantity, unit_price, total)
+                VALUES (?,?,?,?,?,?)
+            """, (bid, item["item_type"], item["description"],
+                  item["quantity"], item["unit_price"], item["total"]))
+
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
 def update_bill_status(bid: int, status: str):
     conn = get_connection()
     conn.execute("UPDATE bills SET status=? WHERE id=?", (status, bid))
     conn.commit(); conn.close()
 
+
+def get_audit_logs(limit=100):
+    conn = get_connection()
+    rows = conn.execute('''SELECT al.*, u.username FROM audit_log al LEFT JOIN users u ON al.user_id = u.id ORDER BY al.timestamp DESC LIMIT ?''', (limit,)).fetchall()
+    conn.close()
+    return rows

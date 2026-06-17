@@ -1,4 +1,4 @@
-﻿from PyQt6.QtWidgets import (
+from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
     QLabel, QPushButton, QFrame, QStackedWidget, QMessageBox
 )
@@ -19,6 +19,7 @@ from ui.stats_tab         import StatsTab
 from ui.ai_prediction_tab import AIPredictionTab
 from ui.chatbot_tab       import ChatbotTab
 from ui.settings_tab      import SettingsTab
+from ui.audit_log_tab     import AuditLogTab
 
 
 class SidebarBtn(QPushButton):
@@ -91,6 +92,7 @@ class MainWindow(QMainWindow):
             ("📤","Xuất báo cáo",       "export",          lambda: ExportTab()),
             ("🔮","Dự đoán bệnh",        "ai",              lambda: AIPredictionTab()),
             ("💬","Chatbot AI",        "ai",              lambda: ChatbotTab()),
+            ("🛡️","Audit Trail",       "audit_logs",      lambda: AuditLogTab()),
         ]
         if role_key == "admin":
             nav_items.append(("⚙️","Cài đặt / Backup","settings",lambda: SettingsTab()))
@@ -197,9 +199,12 @@ class MainWindow(QMainWindow):
             "nurse":          "Ghi chú chăm sóc, dấu hiệu sinh tồn, theo dõi bệnh nhân.",
             "receptionist":   "Quản lý lịch hẹn và tiếp nhận bệnh nhân.",
             "pharmacist":     "Duyệt đơn thuốc và quản lý kho dược.",
-            "accountant":     "Quản lý viện phí và thanh toán.",
+            "accountant":     "Quản lý viện phí và lập báo cáo.",
             "lab_technician": "Thực hiện xét nghiệm và nhập kết quả.",
             "director":       "Xem báo cáo tổng hợp và thống kê toàn bệnh viện.",
+            "cashier":        "Xử lý thanh toán tại quầy và in biên lai.",
+            "department_head":"Quản lý bác sĩ trong khoa, duyệt nghỉ phép và xem báo cáo khoa.",
+            "hr_manager":     "Quản lý hồ sơ nhân viên, theo dõi chấm công và tính lương.",
         }
         hint_txt = hints.get(self.user["role"],"")
         if hint_txt:
