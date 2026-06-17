@@ -1,9 +1,3 @@
-"""
-Hospital Management System — Statistics & Charts Dashboard
-Biểu đồ: bệnh nhân theo thời gian, tỉ lệ bệnh, thống kê tổng quan
-Dùng Matplotlib nhúng vào PyQt6
-"""
-
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QFrame, QComboBox, QGridLayout, QSizePolicy, QTabWidget

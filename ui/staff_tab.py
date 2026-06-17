@@ -1,9 +1,4 @@
-﻿"""
-Hospital Management System — Staff Management Tab
-Quản lý nhân viên, bác sĩ, y tá, lễ tân
-"""
-
-from PyQt6.QtWidgets import (
+﻿from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
     QComboBox, QDialog, QFormLayout, QTextEdit, QMessageBox,
@@ -16,15 +11,15 @@ import database.dao as dao
 import core.auth as auth
 
 POSITIONS = [
-    "B\u00e1c si",             # doctor
-    "Y t\u00e1 / \u0110i\u1ec1u d\u01b0\u1ee1ng",   # nurse  (matches seed)
-    "L\u1ec5 t\u00e2n",            # receptionist
-    "D\u01b0\u1ee3c si",           # pharmacist
-    "K\u1ebf to\u00e1n",           # accountant (matches seed)
-    "X\u00e9t nghi\u1ec7m vi\u00ean",  # lab_technician (matches seed)
-    "Gi\u00e1m \u0111\u1ed1c",          # director (matches seed)
-    "Qu\u1ea3n tr\u1ecb vi\u00ean",   # admin
-    "Kh\u00e1c",               # other
+    "Bác si",             # doctor
+    "Y tá / Điều dưỡng",   # nurse  (matches seed)
+    "Lễ tân",            # receptionist
+    "Dược sĩ",           # pharmacist
+    "Kế toán",           # accountant (matches seed)
+    "Xét nghiệm viên",  # lab_technician (matches seed)
+    "Giám đốc",          # director (matches seed)
+    "Quản trị viên",   # admin
+    "Khác",               # other
 ]
 GENDERS   = ["Nam", "Nữ", "Khác"]
 

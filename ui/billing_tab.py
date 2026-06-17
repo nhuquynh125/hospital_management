@@ -1,8 +1,3 @@
-"""
-Hospital Management System — Billing Tab
-Kế toán: quản lý viện phí, thanh toán
-"""
-
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QTableWidget, QTableWidgetItem, QHeaderView,

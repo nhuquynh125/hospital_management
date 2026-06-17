@@ -1,8 +1,3 @@
-"""
-Hospital Management System — Smart Search Utility (NLP / Fuzzy Matching)
-Uses rapidfuzz so users can search "Nguyen Van A" and match "Nguyễn Văn A"
-"""
-
 import unicodedata
 import re
 

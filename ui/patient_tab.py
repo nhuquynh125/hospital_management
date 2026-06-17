@@ -1,8 +1,3 @@
-"""
-Hospital Management System — Patient Management Tab
-CRUD + Smart Search (NLP fuzzy)
-"""
-
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,

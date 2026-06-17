@@ -1,9 +1,4 @@
-﻿"""
-Hospital Management System — Data Access Layer (DAO)
-All database queries are centralised here.
-"""
-
-import sqlite3
+﻿import sqlite3
 from database.schema import get_connection
 from datetime import datetime
 

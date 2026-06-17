@@ -1,8 +1,3 @@
-"""
-Hospital Management System — Entry Point
-Run: python main.py
-"""
-
 import sys
 import os
 

@@ -1,8 +1,3 @@
-"""
-Hospital Management System — Login Window
-Card đăng nhập luôn nằm giữa, width cố định 400px, window tùy chỉnh kích thước
-"""
-
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QMessageBox, QFrame, QSizePolicy

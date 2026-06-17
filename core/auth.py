@@ -1,8 +1,3 @@
-"""
-Hospital Management System — Authentication Service
-8 vai trò: admin, doctor, nurse, receptionist, pharmacist, accountant, lab_technician, director
-"""
-
 import bcrypt
 from database.dao import get_user_by_username, log_action
 

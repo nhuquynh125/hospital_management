@@ -1,8 +1,3 @@
-"""
-Hospital Management System — Room / Bed Management Tab
-Fix: grid không còn render ô trống thừa
-"""
-
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTableWidget, QTableWidgetItem, QHeaderView, QComboBox,

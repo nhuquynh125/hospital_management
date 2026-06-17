@@ -1,10 +1,4 @@
-﻿"""
-Hospital Management System — AI Chatbot Tab
-Chatbot hỗ trợ tra cứu thông tin y tế (Google Gemini API)
-
-"""
-
-import os
+﻿import os
 import datetime
 
 from PyQt6.QtWidgets import (

@@ -1,7 +1,3 @@
-"""
-Hospital Management System — Settings, Backup & Restore Tab
-"""
-
 import os, shutil, glob
 from datetime import datetime
 

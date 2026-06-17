@@ -1,10 +1,4 @@
-﻿"""
-Hospital Management System — Màn hình Khám bệnh tích hợp
-Flow: Thông tin BN → Khám / Chẩn đoán → Chỉ định XN (nếu cần) → Kê đơn thuốc → Lưu
-Chỉ dành cho bác sĩ (role: doctor, admin)
-"""
-
-import json
+﻿import json
 from datetime import datetime
 
 from PyQt6.QtWidgets import (

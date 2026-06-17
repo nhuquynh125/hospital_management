@@ -1,8 +1,3 @@
-"""
-Hospital Management System — Appointment Management Tab
-Đặt / huỷ lịch hẹn, lịch tái khám, trạng thái khám
-"""
-
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,

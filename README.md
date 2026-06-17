@@ -30,7 +30,7 @@ hospital_management/
 │   ├── medicine_tab.py            # 💊 Thuốc, kê đơn, tương tác thuốc
 │   ├── export_tab.py              # 📤 Xuất báo cáo PDF/Excel
 │   ├── stats_tab.py               # 📊 Biểu đồ thống kê (Matplotlib)
-│   ├── ai_prediction_tab.py       # 🔮 AI dự đoán bệnh (scikit-learn)
+│   ├── ai_prediction_tab.py       # 🔮 Dự đoán bệnh (scikit-learn)
 │   ├── chatbot_tab.py             # 💬 Chatbot AI (Google Gemini API)
 │   └── settings_tab.py            # ⚙️ Cài đặt, Backup/Restore, Đổi mật khẩu
 │

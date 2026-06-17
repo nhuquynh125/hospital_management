@@ -1,8 +1,3 @@
-"""
-Hospital Management System — Nursing Care Tab
-Y tá / Điều dưỡng: ghi chú chăm sóc, dấu hiệu sinh tồn
-"""
-
 import json
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,

@@ -1,9 +1,4 @@
-﻿"""
-Hospital Management System — Main Window
-8 vai trò: admin, doctor, nurse, receptionist, pharmacist, accountant, lab_technician, director
-"""
-
-from PyQt6.QtWidgets import (
+﻿from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
     QLabel, QPushButton, QFrame, QStackedWidget, QMessageBox
 )
@@ -94,7 +89,7 @@ class MainWindow(QMainWindow):
             ("💰","Viện phí",           "billing",         lambda: BillingTab()),
             ("📊","Thống kê",           "reports",         lambda: StatsTab()),
             ("📤","Xuất báo cáo",       "export",          lambda: ExportTab()),
-            ("🔮","AI Dự đoán",        "ai",              lambda: AIPredictionTab()),
+            ("🔮","Dự đoán bệnh",        "ai",              lambda: AIPredictionTab()),
             ("💬","Chatbot AI",        "ai",              lambda: ChatbotTab()),
         ]
         if role_key == "admin":

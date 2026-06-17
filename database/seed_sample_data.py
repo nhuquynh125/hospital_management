@@ -1,16 +1,3 @@
-"""
-Hospital Management System — Seed Sample Data Script
-Chạy file này 1 lần để thêm dữ liệu mẫu vào tất cả các module còn trống:
-  - Lịch hẹn (hôm nay + sắp tới)
-  - Hồ sơ bệnh án + chẩn đoán (để biểu đồ thống kê có dữ liệu)
-  - Chăm sóc điều dưỡng
-  - Xét nghiệm
-  - Viện phí
-  - Đơn thuốc mẫu
-
-Chạy: python database/seed_sample_data.py
-"""
-
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 

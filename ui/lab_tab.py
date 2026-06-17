@@ -1,8 +1,3 @@
-"""
-Hospital Management System — Lab Tests Tab
-Xét nghiệm viên: quản lý xét nghiệm, nhập kết quả
-"""
-
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,

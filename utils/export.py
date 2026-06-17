@@ -1,9 +1,4 @@
-﻿"""
-Hospital Management System — Export Utility
-Xuất PDF (reportlab) và Excel (openpyxl)
-"""
-
-import os
+﻿import os
 from datetime import datetime
 
 try:

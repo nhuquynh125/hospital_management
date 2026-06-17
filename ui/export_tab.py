@@ -1,8 +1,3 @@
-"""
-Hospital Management System — Export & Reports Tab
-Xuất PDF / Excel cho bệnh nhân, đơn thuốc, báo cáo tháng
-"""
-
 import os
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,

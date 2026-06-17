@@ -1,9 +1,3 @@
-"""
-Hospital Management System — AI Disease Prediction Tab
-Dự đoán bệnh từ triệu chứng dùng Random Forest (scikit-learn)
-Dataset: synthetic symptom-disease mapping (dễ mở rộng với Kaggle dataset)
-"""
-
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QFrame, QCheckBox, QScrollArea, QTableWidget, QTableWidgetItem,

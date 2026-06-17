@@ -1,8 +1,3 @@
-"""
-Hospital Management System — Database Schema & Initialization
-8 vai trò: admin, doctor, nurse, receptionist, pharmacist, accountant, lab_technician, director
-"""
-
 import sqlite3
 import os
 import bcrypt
