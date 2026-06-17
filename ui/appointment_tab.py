@@ -453,6 +453,7 @@ class AppointmentTab(QWidget):
         action_row = QHBoxLayout()
         btn_specs = [
             ("✏️ Sửa",        "actionBtn",  self._edit_appointment),
+            ("🩺 Khám bệnh",   "examBtn",    self._start_examination),
             ("✅ Hoàn thành", "successBtn", self._mark_done),
             ("❌ Huỷ lịch",  "dangerBtn",  self._cancel_appointment),
         ]

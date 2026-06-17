@@ -110,7 +110,8 @@ class MainWindow(QMainWindow):
                 lich_hen_item = nav_items.pop(lich_hen_idx)
                 nav_items.insert(0, lich_hen_item)
 
-        if role_key in ("admin", "director"):
+        has_settings_access = any(p.startswith("settings.") for p in auth._current_permissions)
+        if role_key == "admin" or has_settings_access:
             nav_items.append(("⚙️","Cài đặt / Backup","settings",lambda: SettingsTab()))
 
         if role_key != "director":

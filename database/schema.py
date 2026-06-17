@@ -409,16 +409,23 @@ def _seed_rbac(cur, conn):
         "hr_manager": ["staff", "export",
                        "settings.personal_info", "settings.leave",
                        "settings.salary_view", "settings.salary_config", "settings.security"],
-        # ── Full-access roles get all settings sections ──
-        **{role: ["settings.personal_info", "settings.leave",
-                   "settings.salary_view", "settings.salary_config", "settings.security"]
-           for role in ["doctor", "nurse", "receptionist", "pharmacist", "accountant",
-                        "cashier", "lab_technician", "director", "department_head"]},
         # ── Support staff: limited settings only ──
         "security_guard":   ["settings.personal_info", "settings.salary_view", "settings.security"],
         "ambulance_driver":  ["settings.personal_info", "settings.salary_view", "settings.security"],
         "janitor":           ["settings.personal_info", "settings.salary_view", "settings.security"],
     }
+
+    # ── Full-access roles get all settings sections ──
+    roles_with_settings = ["doctor", "nurse", "receptionist", "pharmacist", "accountant",
+                           "cashier", "lab_technician", "director", "department_head"]
+    settings_perms = ["settings.personal_info", "settings.leave",
+                      "settings.salary_view", "settings.salary_config", "settings.security"]
+    for role in roles_with_settings:
+        if role not in role_perms:
+            role_perms[role] = []
+        for perm in settings_perms:
+            if perm not in role_perms[role]:
+                role_perms[role].append(perm)
 
     # Fetch IDs
     cur.execute("SELECT id, role_name FROM roles")
