@@ -2,12 +2,37 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
     QComboBox, QDialog, QFormLayout, QTextEdit, QMessageBox,
-    QDateEdit, QTimeEdit, QFrame, QScrollArea, QTabWidget
+    QDateEdit, QTimeEdit, QFrame, QScrollArea, QTabWidget, QSizePolicy
 )
 from PyQt6.QtCore import Qt, QDate, QTime
 from PyQt6.QtGui import QFont, QColor
 
 import database.dao as dao
+from datetime import datetime
+
+try:
+    import matplotlib
+    matplotlib.use("QtAgg")
+    from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+    from matplotlib.figure import Figure
+    MATPLOTLIB = True
+except ImportError:
+    MATPLOTLIB = False
+
+if MATPLOTLIB:
+    class MplCanvas(FigureCanvas):
+        def __init__(self, width=5, height=4, dpi=100):
+            self.fig = Figure(figsize=(width, height), dpi=dpi, facecolor="#f7fafc")
+            self.axes = self.fig.add_subplot(111)
+            super().__init__(self.fig)
+            self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+            self.updateGeometry()
+else:
+    class MplCanvas(QWidget):
+        def __init__(self, *args, **kwargs):
+            super().__init__()
+            layout = QVBoxLayout(self)
+            layout.addWidget(QLabel("Matplotlib not installed"))
 
 STATUSES = ["Chờ", "Đang khám", "Hoàn thành", "Huỷ"]
 STATUS_COLORS = {
@@ -16,6 +41,157 @@ STATUS_COLORS = {
     "Hoàn thành": ("#d4edda", "#155724"),
     "Huỷ":        ("#f8d7da", "#721c24"),
 }
+
+
+# ═══════════════════════════════════════════════════════════
+#  Appointment Stats Dialog
+# ═══════════════════════════════════════════════════════════
+class AppointmentStatsDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Thống kê lịch hẹn")
+        self.setMinimumSize(750, 500)
+        self._build_ui()
+        self._apply_style()
+
+    def _build_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(16)
+        
+        controls = QHBoxLayout()
+        self.chart_type_cb = QComboBox()
+        self.chart_type_cb.addItems(["Biểu đồ tròn (Theo trạng thái)", "Biểu đồ cột (Theo tháng)"])
+        self.chart_type_cb.currentIndexChanged.connect(self._toggle_controls)
+        
+        self.time_type_cb = QComboBox()
+        self.time_type_cb.addItems(["Theo tháng", "Theo tuần"])
+        self.time_type_cb.currentIndexChanged.connect(self._toggle_controls)
+        
+        self.val_cb = QComboBox()
+        self.year_cb = QComboBox()
+        
+        now = datetime.now()
+        self.year_cb.addItems([str(y) for y in range(2020, 2030)])
+        self.year_cb.setCurrentText(str(now.year))
+        
+        controls.addWidget(QLabel("Loại biểu đồ:"))
+        controls.addWidget(self.chart_type_cb)
+        controls.addWidget(self.time_type_cb)
+        controls.addWidget(self.val_cb)
+        controls.addWidget(self.year_cb)
+        
+        btn = QPushButton("Lọc")
+        btn.setObjectName("primaryBtn")
+        btn.clicked.connect(self._draw_chart)
+        controls.addWidget(btn)
+        controls.addStretch()
+        
+        layout.addLayout(controls)
+        
+        self.canvas = MplCanvas(width=6, height=4)
+        layout.addWidget(self.canvas)
+        
+        self._toggle_controls()
+
+    def _toggle_controls(self):
+        chart_type = self.chart_type_cb.currentIndex()
+        if chart_type == 0:  # Pie
+            self.time_type_cb.setVisible(True)
+            self.val_cb.setVisible(True)
+            
+            self.val_cb.clear()
+            if self.time_type_cb.currentText() == "Theo tháng":
+                self.val_cb.addItems([f"Tháng {i}" for i in range(1, 13)])
+                self.val_cb.setCurrentIndex(datetime.now().month - 1)
+            else:
+                self.val_cb.addItems([f"Tuần {i}" for i in range(1, 54)])
+                curr_week = datetime.now().isocalendar()[1]
+                self.val_cb.setCurrentIndex(curr_week - 1)
+        else: # Bar
+            self.time_type_cb.setVisible(False)
+            self.val_cb.setVisible(False)
+        
+        self._draw_chart()
+
+    def _draw_chart(self):
+        if not MATPLOTLIB:
+            return
+            
+        ax = self.canvas.axes
+        ax.clear()
+        
+        chart_type = self.chart_type_cb.currentIndex()
+        year = int(self.year_cb.currentText())
+        
+        if chart_type == 0:  # Pie
+            ft = "month" if self.time_type_cb.currentText() == "Theo tháng" else "week"
+            val = self.val_cb.currentIndex() + 1
+            if ft == "month":
+                data = dao.get_appointment_status_stats(filter_type="month", month=val, year=year)
+                title = f"Tỷ lệ trạng thái lịch hẹn - Tháng {val}/{year}"
+            else:
+                w_str = f"{year}-W{val:02d}"
+                data = dao.get_appointment_status_stats(filter_type="week", week_str=w_str)
+                title = f"Tỷ lệ trạng thái lịch hẹn - Tuần {val}/{year}"
+                
+            if not data or all(d[1] == 0 for d in data):
+                ax.text(0.5, 0.5, "Chưa có dữ liệu lịch hẹn", ha="center", va="center", color="#a0aec0", fontsize=12)
+            else:
+                labels = [d[0] for d in data if d[1] > 0]
+                values = [d[1] for d in data if d[1] > 0]
+                
+                # Assign specific colors for statuses
+                color_map = {
+                    "Chờ": "#f6ad55",
+                    "Đang khám": "#4299e1",
+                    "Hoàn thành": "#68d391",
+                    "Huỷ": "#fc8181"
+                }
+                colors = [color_map.get(lbl, "#b794f4") for lbl in labels]
+                
+                wedges, texts, autotexts = ax.pie(
+                    values, labels=labels, autopct="%1.1f%%",
+                    colors=colors, startangle=90,
+                    wedgeprops={"edgecolor":"white","linewidth":1.5}
+                )
+                ax.set_title(title, fontsize=12, fontweight="bold", pad=10)
+        else: # Bar
+            data = dao.get_appointment_monthly_counts(year=year)
+            if not data or all(d[1] == 0 for d in data):
+                ax.text(0.5, 0.5, "Chưa có dữ liệu", ha="center", va="center", color="#a0aec0", fontsize=12)
+            else:
+                labels = [d[0] for d in data]
+                values = [d[1] for d in data]
+                bars = ax.bar(labels, values, color="#4299e1", edgecolor="white")
+                ax.set_title(f"Số lượng lịch hẹn theo tháng (Đã trừ Huỷ) - Năm {year}", fontsize=12, fontweight="bold", pad=10)
+                ax.set_ylabel("Số lịch hẹn", fontsize=10)
+                ax.tick_params(axis="x", rotation=30, labelsize=9)
+                ax.spines["top"].set_visible(False)
+                ax.spines["right"].set_visible(False)
+                ax.set_facecolor("#f7fafc")
+                for bar, v in zip(bars, values):
+                    if v > 0:
+                        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.1,
+                                str(v), ha="center", va="bottom", fontsize=9, color="#2d3748")
+                        
+        self.canvas.fig.tight_layout()
+        self.canvas.draw()
+
+    def _apply_style(self):
+        self.setStyleSheet("""
+        QDialog { background: #f7fafc; font-family: 'Segoe UI'; }
+        QLabel { font-size: 13px; font-weight: 500; color: #4a5568; }
+        QComboBox {
+            border: 1.5px solid #cbd5e0; border-radius: 6px;
+            padding: 6px 12px; font-size: 13px; background: white; min-height: 20px;
+        }
+        #primaryBtn {
+            background: #2b6cb0; color: white; border: none;
+            border-radius: 6px; padding: 8px 16px; font-weight: 600; font-size: 13px;
+        }
+        #primaryBtn:hover { background: #2c5282; }
+        """)
 
 
 # ═══════════════════════════════════════════════════════════
@@ -205,12 +381,19 @@ class AppointmentTab(QWidget):
         header_row.addWidget(title)
         header_row.addStretch()
 
+        self.stats_btn    = QPushButton("📊 Thống kê")
         self.add_btn      = QPushButton("➕ Đặt lịch hẹn")
         self.followup_btn = QPushButton("🔁 Lịch tái khám")
+        
+        self.stats_btn.setObjectName("actionBtn")
         self.add_btn.setObjectName("primaryBtn")
         self.followup_btn.setObjectName("secondaryBtn")
+        
+        self.stats_btn.clicked.connect(self._show_stats)
         self.add_btn.clicked.connect(self._add_appointment)
         self.followup_btn.clicked.connect(self._add_followup)
+        
+        header_row.addWidget(self.stats_btn)
         header_row.addWidget(self.add_btn)
         header_row.addWidget(self.followup_btn)
         layout.addLayout(header_row)
@@ -305,6 +488,10 @@ class AppointmentTab(QWidget):
                     item.setForeground(QColor(fg))
                 self.table.setItem(r, c, item)
         self.count_lbl.setText(f"Tìm thấy {len(rows)} lịch hẹn")
+
+    def _show_stats(self):
+        dlg = AppointmentStatsDialog(self)
+        dlg.exec()
 
     def _selected_id(self):
         row = self.table.currentRow()

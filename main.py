@@ -9,7 +9,9 @@ from PyQt6.QtGui import QFont, QIcon
 from database.schema import init_db
 from ui.login_window import LoginWindow
 from ui.main_window  import MainWindow
+from ui.force_password_dialog import ForcePasswordDialog
 
+_main_window = None
 
 def main():
     # 1. Bootstrap database
@@ -36,17 +38,19 @@ def main():
     login_win = LoginWindow()
 
     def on_login_success(user: dict):
+        global _main_window
         # ── First-login enforcement ──────────────────────────────────
         if user.get("must_change_password", 0):
             dlg = ForcePasswordDialog(user, parent=None)
             def _after_change():
-                window = MainWindow(user)
-                window.show()
+                global _main_window
+                _main_window = MainWindow(user)
+                _main_window.show()
             dlg.password_changed.connect(_after_change)
             dlg.exec()   # blocks until password is changed (cannot be dismissed)
         else:
-            window = MainWindow(user)
-            window.show()
+            _main_window = MainWindow(user)
+            _main_window.show()
 
     login_win.login_success.connect(on_login_success)
     login_win.show()

@@ -23,6 +23,7 @@ from ui.predictive_analytics_tab import PredictiveAnalyticsTab
 from ui.chatbot_tab       import ChatbotTab
 from ui.settings_tab      import SettingsTab
 from ui.audit_log_tab     import AuditLogTab
+from ui.shift_schedule_tab import ShiftScheduleTab
 
 
 class SidebarBtn(QPushButton):
@@ -99,6 +100,10 @@ class MainWindow(QMainWindow):
             ("🛡️","Audit Trail",       "audit_logs",      lambda: AuditLogTab()),
         ]
 
+        excluded_shifts_roles = ("admin", "director", "accountant", "department_head", "hr_manager")
+        if role_key not in excluded_shifts_roles:
+            nav_items.insert(2, ("📅", "Lịch trực", None, lambda: ShiftScheduleTab()))
+
         if role_key == "doctor":
             lich_hen_idx = next((i for i, item in enumerate(nav_items) if item[1] == "Lịch hẹn"), -1)
             if lich_hen_idx != -1:
@@ -108,10 +113,14 @@ class MainWindow(QMainWindow):
         if role_key in ("admin", "director"):
             nav_items.append(("⚙️","Cài đặt / Backup","settings",lambda: SettingsTab()))
 
+        if role_key != "director":
+            nav_items = [item for item in nav_items if item[1] not in ("Báo cáo Điều hành", "Dự báo Lượng bệnh")]
+
         self._stack = QStackedWidget()
         for icon, label, module, factory in nav_items:
-            if not auth.can_access(module):
+            if module is not None and not auth.can_access(module):
                 continue
+
             btn = SidebarBtn(icon, label)
             btn.clicked.connect(self._make_nav_handler(btn, factory))
             sb.addWidget(btn)

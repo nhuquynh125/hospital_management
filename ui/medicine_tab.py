@@ -399,67 +399,67 @@ class MedicineTab(QWidget):
         tabs = QTabWidget()
 
         # ── Sub-tab 1: Medicine inventory ─────────────────────────
-        inv_widget = QWidget()
-        inv_layout = QVBoxLayout(inv_widget)
-        inv_layout.setContentsMargins(12, 12, 12, 12)
-        inv_layout.setSpacing(8)
-
-        # Header
-        h_row = QHBoxLayout()
-        h_row.addWidget(QLabel("💊 Kho thuốc"))
-        h_row.addStretch()
-        self.add_med_btn = QPushButton("➕ Thêm thuốc")
-        self.add_med_btn.setObjectName("primaryBtn")
-        self.add_med_btn.clicked.connect(self._add_medicine)
-        h_row.addWidget(self.add_med_btn)
-        inv_layout.addLayout(h_row)
-
-        # Filter
-        f_row = QHBoxLayout()
-        self.med_search = QLineEdit()
-        self.med_search.setPlaceholderText("🔍  Tìm theo tên thuốc, hoạt chất")
-        self.med_search.setObjectName("searchBox")
-        self.med_search.textChanged.connect(self.load_data)
-        self.cat_cb = QComboBox()
-        self.cat_cb.addItems(["Tất cả nhóm"] + MEDICINE_CATEGORIES)
-        self.cat_cb.currentIndexChanged.connect(self.load_data)
-        self.low_stock_cb = QComboBox()
-        self.low_stock_cb.addItems(["Tất cả", "⚠️ Sắp hết hàng", "⏰ Sắp hết hạn"])
-        self.low_stock_cb.currentIndexChanged.connect(self.load_data)
-        f_row.addWidget(self.med_search, 2)
-        f_row.addWidget(self.cat_cb)
-        f_row.addWidget(self.low_stock_cb)
-        inv_layout.addLayout(f_row)
-
-        self.med_count_lbl = QLabel()
-        self.med_count_lbl.setObjectName("countLabel")
-        inv_layout.addWidget(self.med_count_lbl)
-
-        # Table
-        self.med_table = QTableWidget()
-        cols = ["Mã", "Tên thuốc", "Hoạt chất", "Nhóm", "Đơn vị",
-                "Tồn kho", "Min", "Giá", "Hạn SD", "Nhà CC"]
-        self.med_table.setColumnCount(len(cols))
-        self.med_table.setHorizontalHeaderLabels(cols)
-        self.med_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.med_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self.med_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.med_table.setAlternatingRowColors(True)
-        self.med_table.verticalHeader().setVisible(False)
-        inv_layout.addWidget(self.med_table)
-
-        # Actions
-        a_row = QHBoxLayout()
-        self.edit_med_btn   = QPushButton("✏️ Sửa");    self.edit_med_btn.setObjectName("actionBtn")
-        self.delete_med_btn = QPushButton("🗑️ Xoá");   self.delete_med_btn.setObjectName("dangerBtn")
-        self.edit_med_btn.clicked.connect(self._edit_medicine)
-        self.delete_med_btn.clicked.connect(self._delete_medicine)
-        a_row.addWidget(self.edit_med_btn)
-        a_row.addWidget(self.delete_med_btn)
-        a_row.addStretch()
-        inv_layout.addLayout(a_row)
-        
         if role != "doctor":
+            inv_widget = QWidget()
+            inv_layout = QVBoxLayout(inv_widget)
+            inv_layout.setContentsMargins(12, 12, 12, 12)
+            inv_layout.setSpacing(8)
+
+            # Header
+            h_row = QHBoxLayout()
+            h_row.addWidget(QLabel("💊 Kho thuốc"))
+            h_row.addStretch()
+            self.add_med_btn = QPushButton("➕ Thêm thuốc")
+            self.add_med_btn.setObjectName("primaryBtn")
+            self.add_med_btn.clicked.connect(self._add_medicine)
+            h_row.addWidget(self.add_med_btn)
+            inv_layout.addLayout(h_row)
+
+            # Filter
+            f_row = QHBoxLayout()
+            self.med_search = QLineEdit()
+            self.med_search.setPlaceholderText("🔍  Tìm theo tên thuốc, hoạt chất")
+            self.med_search.setObjectName("searchBox")
+            self.med_search.textChanged.connect(self.load_data)
+            self.cat_cb = QComboBox()
+            self.cat_cb.addItems(["Tất cả nhóm"] + MEDICINE_CATEGORIES)
+            self.cat_cb.currentIndexChanged.connect(self.load_data)
+            self.low_stock_cb = QComboBox()
+            self.low_stock_cb.addItems(["Tất cả", "⚠️ Sắp hết hàng", "⏰ Sắp hết hạn"])
+            self.low_stock_cb.currentIndexChanged.connect(self.load_data)
+            f_row.addWidget(self.med_search, 2)
+            f_row.addWidget(self.cat_cb)
+            f_row.addWidget(self.low_stock_cb)
+            inv_layout.addLayout(f_row)
+
+            self.med_count_lbl = QLabel()
+            self.med_count_lbl.setObjectName("countLabel")
+            inv_layout.addWidget(self.med_count_lbl)
+
+            # Table
+            self.med_table = QTableWidget()
+            cols = ["Mã", "Tên thuốc", "Hoạt chất", "Nhóm", "Đơn vị",
+                    "Tồn kho", "Min", "Giá", "Hạn SD", "Nhà CC"]
+            self.med_table.setColumnCount(len(cols))
+            self.med_table.setHorizontalHeaderLabels(cols)
+            self.med_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+            self.med_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+            self.med_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+            self.med_table.setAlternatingRowColors(True)
+            self.med_table.verticalHeader().setVisible(False)
+            inv_layout.addWidget(self.med_table)
+
+            # Actions
+            a_row = QHBoxLayout()
+            self.edit_med_btn   = QPushButton("✏️ Sửa");    self.edit_med_btn.setObjectName("actionBtn")
+            self.delete_med_btn = QPushButton("🗑️ Xoá");   self.delete_med_btn.setObjectName("dangerBtn")
+            self.edit_med_btn.clicked.connect(self._edit_medicine)
+            self.delete_med_btn.clicked.connect(self._delete_medicine)
+            a_row.addWidget(self.edit_med_btn)
+            a_row.addWidget(self.delete_med_btn)
+            a_row.addStretch()
+            inv_layout.addLayout(a_row)
+            
             tabs.addTab(inv_widget, "💊 Kho thuốc")
 
         # ── Sub-tab 2: Prescriptions ──────────────────────────────
@@ -498,30 +498,31 @@ class MedicineTab(QWidget):
         layout.addWidget(tabs)
 
     def load_data(self):
-        search   = self.med_search.text().strip()
-        category = self.cat_cb.currentText()
-        filter_t = self.low_stock_cb.currentText()
-        if category == "Tất cả nhóm": category = ""
-        low_stock  = "⚠️ Sắp hết hàng" in filter_t
-        near_expiry = "⏰ Sắp hết hạn"  in filter_t
+        if hasattr(self, 'med_search'):
+            search   = self.med_search.text().strip()
+            category = self.cat_cb.currentText()
+            filter_t = self.low_stock_cb.currentText()
+            if category == "Tất cả nhóm": category = ""
+            low_stock  = "⚠️ Sắp hết hàng" in filter_t
+            near_expiry = "⏰ Sắp hết hạn"  in filter_t
 
-        rows = dao.get_all_medicines(search, category, low_stock, near_expiry)
-        self.med_table.setRowCount(len(rows))
-        for r, m in enumerate(rows):
-            price_str = f"{int(m['price'] or 0):,}"
-            is_low = m["stock_qty"] <= m["min_stock"]
-            vals = [m["medicine_code"], m["name"], m["generic_name"] or "",
-                    m["category"] or "", m["unit"] or "",
-                    str(m["stock_qty"]), str(m["min_stock"]),
-                    f"{price_str} VNĐ", m["expiry_date"] or "", m["supplier"] or ""]
-            for c, v in enumerate(vals):
-                item = QTableWidgetItem(v)
-                item.setData(Qt.ItemDataRole.UserRole.value, m["id"])
-                if c == 5 and is_low:
-                    item.setBackground(QColor("#fff5f5"))
-                    item.setForeground(QColor("#c53030"))
-                self.med_table.setItem(r, c, item)
-        self.med_count_lbl.setText(f"Tổng: {len(rows)} loại thuốc")
+            rows = dao.get_all_medicines(search, category, low_stock, near_expiry)
+            self.med_table.setRowCount(len(rows))
+            for r, m in enumerate(rows):
+                price_str = f"{int(m['price'] or 0):,}"
+                is_low = m["stock_qty"] <= m["min_stock"]
+                vals = [m["medicine_code"], m["name"], m["generic_name"] or "",
+                        m["category"] or "", m["unit"] or "",
+                        str(m["stock_qty"]), str(m["min_stock"]),
+                        f"{price_str} VNĐ", m["expiry_date"] or "", m["supplier"] or ""]
+                for c, v in enumerate(vals):
+                    item = QTableWidgetItem(v)
+                    item.setData(Qt.ItemDataRole.UserRole.value, m["id"])
+                    if c == 5 and is_low:
+                        item.setBackground(QColor("#fff5f5"))
+                        item.setForeground(QColor("#c53030"))
+                    self.med_table.setItem(r, c, item)
+            self.med_count_lbl.setText(f"Tổng: {len(rows)} loại thuốc")
         if hasattr(self, "smart_inv_widget"):
             self.smart_inv_widget.load_data()
 

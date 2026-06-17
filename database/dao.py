@@ -838,6 +838,50 @@ def get_appointments_by_doctor(filter_type=None, month=None, year=None, week_str
     return [(r["full_name"], r["cnt"]) for r in rows]
 
 
+def get_appointment_status_stats(filter_type="month", month=None, year=None, week_str=None):
+    """Return (status, count) for the selected month or week."""
+    conn = get_connection()
+    query = """
+        SELECT status, COUNT(id) AS cnt
+        FROM appointments
+        WHERE 1=1
+    """
+    params = []
+    if filter_type == "month" and month and year:
+        query += " AND strftime('%m', appointment_date) = ? AND strftime('%Y', appointment_date) = ?"
+        params.extend([f"{int(month):02d}", str(year)])
+    elif filter_type == "week" and week_str:
+        query += " AND strftime('%Y-%W', appointment_date) = ?"
+        params.append(week_str)
+
+    query += " GROUP BY status ORDER BY cnt DESC"
+    rows = conn.execute(query, params).fetchall()
+    conn.close()
+    return [(r["status"] or "Chờ", r["cnt"]) for r in rows]
+
+
+def get_appointment_monthly_counts(year: int):
+    """Return (month_label, count) for each month in the selected year."""
+    conn = get_connection()
+    query = """
+        SELECT strftime('%m', appointment_date) AS month, COUNT(id) AS cnt
+        FROM appointments
+        WHERE strftime('%Y', appointment_date) = ? AND status != 'Huỷ'
+        GROUP BY month
+        ORDER BY month
+    """
+    rows = conn.execute(query, (str(year),)).fetchall()
+    conn.close()
+    
+    # Initialize all 12 months with 0
+    results_dict = {f"{m:02d}": 0 for m in range(1, 13)}
+    for r in rows:
+        if r["month"]:
+            results_dict[r["month"]] = r["cnt"]
+            
+    return [(f"Tháng {int(m)}", cnt) for m, cnt in results_dict.items()]
+
+
 def get_revenue_by_time(filter_type="month", month=None, year=None, week_str=None):
     """Return (day_label, revenue) for the selected month or week."""
     conn = get_connection()
