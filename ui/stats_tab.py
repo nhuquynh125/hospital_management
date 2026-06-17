@@ -6,6 +6,7 @@ from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
 
 import database.dao as dao
+from datetime import datetime
 
 try:
     import matplotlib
@@ -40,8 +41,9 @@ else:
 #  Stats Tab
 # ═══════════════════════════════════════════════════════════
 class StatsTab(QWidget):
-    def __init__(self):
+    def __init__(self, role=None):
         super().__init__()
+        self.role = role
         self._build_ui()
         self._apply_style()
         if MATPLOTLIB:
@@ -75,22 +77,7 @@ class StatsTab(QWidget):
             layout.addWidget(warn)
             return
 
-        # KPI row
-        self.kpi_row = QHBoxLayout()
-        self.kpi_row.setSpacing(12)
-        self._kpi_frames = {}
-        kpis = [
-            ("total_patients",        "👥", "Tổng bệnh nhân",    "#2b6cb0", "#ebf8ff"),
-            ("total_staff",           "👨‍⚕️","Nhân viên",         "#276749", "#f0fff4"),
-            ("today_appointments",    "🗓️", "Lịch hẹn hôm nay", "#744210", "#fffbeb"),
-            ("available_rooms",       "🏠", "Phòng trống",       "#553c9a", "#faf5ff"),
-            ("low_stock_medicines",   "⚠️", "Thuốc sắp hết",    "#c53030", "#fff5f5"),
-        ]
-        for key, icon, label, color, bg in kpis:
-            card = self._make_kpi_card(icon, label, "—", color, bg)
-            self._kpi_frames[key] = card
-            self.kpi_row.addWidget(card)
-        layout.addLayout(self.kpi_row)
+
 
         # Charts tabs
         chart_tabs = QTabWidget()
@@ -98,77 +85,142 @@ class StatsTab(QWidget):
 
         # Tab 1: patients over time + pie
         tab1 = QWidget()
-        t1l = QHBoxLayout(tab1)
-        t1l.setSpacing(12)
+        t1l = QVBoxLayout(tab1)
+        
+        f1 = QHBoxLayout()
+        self.diag_month_combo = QComboBox()
+        self.diag_month_combo.addItems([f"Tháng {i}" for i in range(1, 13)])
+        self.diag_year_combo = QComboBox()
+        self.diag_year_combo.addItems([str(y) for y in range(2020, 2030)])
+        now = datetime.now()
+        self.diag_month_combo.setCurrentIndex(now.month - 1)
+        self.diag_year_combo.setCurrentText(str(now.year))
+        btn1 = QPushButton("Lọc")
+        btn1.clicked.connect(self._draw_diagnosis_pie)
+        f1.addWidget(QLabel("Tỉ lệ bệnh theo tháng/năm:"))
+        f1.addWidget(self.diag_month_combo)
+        f1.addWidget(self.diag_year_combo)
+        f1.addWidget(btn1)
+        f1.addStretch()
+        t1l.addLayout(f1)
+        
+        t1l_charts = QHBoxLayout()
         self.canvas_bar   = MplCanvas(width=6, height=3.5)
         self.canvas_pie   = MplCanvas(width=4, height=3.5)
-        t1l.addWidget(self.canvas_bar, 3)
-        t1l.addWidget(self.canvas_pie, 2)
+        t1l_charts.addWidget(self.canvas_bar, 3)
+        t1l_charts.addWidget(self.canvas_pie, 2)
+        t1l.addLayout(t1l_charts)
         chart_tabs.addTab(tab1, "📈 Bệnh nhân & Tỉ lệ bệnh")
 
         # Tab 2: appointments by doctor + room status
         tab2 = QWidget()
-        t2l = QHBoxLayout(tab2)
-        t2l.setSpacing(12)
-        self.canvas_doctor = MplCanvas(width=5, height=3.5)
-        self.canvas_room   = MplCanvas(width=4, height=3.5)
-        t2l.addWidget(self.canvas_doctor, 3)
-        t2l.addWidget(self.canvas_room, 2)
-        chart_tabs.addTab(tab2, "🗓️ Lịch hẹn & Phòng bệnh")
+        t2l = QVBoxLayout(tab2)
+        
+        f2 = QHBoxLayout()
+        self.appt_type_combo = QComboBox()
+        self.appt_type_combo.addItems(["Theo tháng", "Theo tuần"])
+        self.appt_val_combo = QComboBox()
+        now = datetime.now()
+        self.appt_val_combo.addItems([f"Tháng {i}" for i in range(1, 13)])
+        self.appt_val_combo.setCurrentIndex(now.month - 1)
+        self.appt_year_combo = QComboBox()
+        self.appt_year_combo.addItems([str(y) for y in range(2020, 2030)])
+        self.appt_year_combo.setCurrentText(str(now.year))
+        
+        def update_appt_combo():
+            self.appt_val_combo.clear()
+            if self.appt_type_combo.currentText() == "Theo tháng":
+                self.appt_val_combo.addItems([f"Tháng {i}" for i in range(1, 13)])
+                self.appt_val_combo.setCurrentIndex(datetime.now().month - 1)
+            else:
+                self.appt_val_combo.addItems([f"Tuần {i}" for i in range(1, 54)])
+                curr_week = datetime.now().isocalendar()[1]
+                self.appt_val_combo.setCurrentIndex(curr_week - 1)
+                
+        self.appt_type_combo.currentIndexChanged.connect(update_appt_combo)
+        btn2 = QPushButton("Lọc")
+        btn2.clicked.connect(self._draw_appointments_by_doctor)
+        f2.addWidget(QLabel("Lịch hẹn theo:"))
+        f2.addWidget(self.appt_type_combo)
+        f2.addWidget(self.appt_val_combo)
+        f2.addWidget(self.appt_year_combo)
+        f2.addWidget(btn2)
+        f2.addStretch()
+        t2l.addLayout(f2)
+        
+        t2l_charts = QHBoxLayout()
+        self.canvas_doctor = MplCanvas(width=9, height=3.5)
+        t2l_charts.addWidget(self.canvas_doctor)
+        t2l.addLayout(t2l_charts)
+        chart_tabs.addTab(tab2, "🗓️ Lịch hẹn")
 
         # Tab 3: medicine stock
-        tab3 = QWidget()
-        t3l = QVBoxLayout(tab3)
-        self.canvas_medicine = MplCanvas(width=9, height=3.5)
-        t3l.addWidget(self.canvas_medicine)
-        chart_tabs.addTab(tab3, "💊 Tồn kho thuốc")
+        if self.role != "doctor":
+            tab3 = QWidget()
+            t3l = QVBoxLayout(tab3)
+            self.canvas_medicine = MplCanvas(width=9, height=3.5)
+            t3l.addWidget(self.canvas_medicine)
+            chart_tabs.addTab(tab3, "💊 Tồn kho thuốc")
 
         # Tab 4: Revenue
-        tab4 = QWidget()
-        t4l = QVBoxLayout(tab4)
-        self.canvas_revenue = MplCanvas(width=9, height=3.5)
-        t4l.addWidget(self.canvas_revenue)
-        chart_tabs.addTab(tab4, "💰 Doanh thu")
+        if self.role != "doctor":
+            tab4 = QWidget()
+            t4l = QVBoxLayout(tab4)
+            
+            f4 = QHBoxLayout()
+            self.rev_type_combo = QComboBox()
+            self.rev_type_combo.addItems(["Theo tháng", "Theo tuần"])
+            self.rev_val_combo = QComboBox()
+            self.rev_val_combo.addItems([f"Tháng {i}" for i in range(1, 13)])
+            now = datetime.now()
+            self.rev_val_combo.setCurrentIndex(now.month - 1)
+            self.rev_year_combo = QComboBox()
+            self.rev_year_combo.addItems([str(y) for y in range(2020, 2030)])
+            self.rev_year_combo.setCurrentText(str(now.year))
+            
+            def update_rev_combo():
+                self.rev_val_combo.clear()
+                if self.rev_type_combo.currentText() == "Theo tháng":
+                    self.rev_val_combo.addItems([f"Tháng {i}" for i in range(1, 13)])
+                    self.rev_val_combo.setCurrentIndex(datetime.now().month - 1)
+                else:
+                    self.rev_val_combo.addItems([f"Tuần {i}" for i in range(1, 54)])
+                    curr_week = datetime.now().isocalendar()[1]
+                    self.rev_val_combo.setCurrentIndex(curr_week - 1)
+                    
+            self.rev_type_combo.currentIndexChanged.connect(update_rev_combo)
+            btn4 = QPushButton("Lọc")
+            btn4.clicked.connect(self._draw_revenue_chart)
+            f4.addWidget(QLabel("Doanh thu theo:"))
+            f4.addWidget(self.rev_type_combo)
+            f4.addWidget(self.rev_val_combo)
+            f4.addWidget(self.rev_year_combo)
+            f4.addWidget(btn4)
+            f4.addStretch()
+            t4l.addLayout(f4)
+            
+            self.canvas_revenue = MplCanvas(width=9, height=3.5)
+            t4l.addWidget(self.canvas_revenue)
+            chart_tabs.addTab(tab4, "💰 Doanh thu")
 
         layout.addWidget(chart_tabs)
 
-    def _make_kpi_card(self, icon, label, value, color, bg):
-        card = QFrame()
-        card.setStyleSheet(f"""
-            QFrame {{ background:{bg}; border-radius:10px; border:1px solid {color}30; }}
-        """)
-        cl = QVBoxLayout(card)
-        cl.setContentsMargins(14, 12, 14, 12)
-        cl.setSpacing(2)
-        icon_lbl = QLabel(icon); icon_lbl.setFont(QFont("Segoe UI", 20))
-        icon_lbl.setStyleSheet("background:transparent;")
-        val_lbl  = QLabel(str(value))
-        val_lbl.setFont(QFont("Segoe UI", 22, QFont.Weight.Bold))
-        val_lbl.setStyleSheet(f"color:{color}; background:transparent;")
-        name_lbl = QLabel(label)
-        name_lbl.setStyleSheet(f"color:{color}; font-size:11px; background:transparent;")
-        cl.addWidget(icon_lbl)
-        cl.addWidget(val_lbl)
-        cl.addWidget(name_lbl)
-        card._val_lbl = val_lbl
-        return card
+
 
     # ── Drawing ──────────────────────────────────────────────────
     def _draw_all_charts(self):
         if not MATPLOTLIB:
             return
-        self._update_kpis()
+
         self._draw_patients_bar()
         self._draw_diagnosis_pie()
         self._draw_appointments_by_doctor()
-        self._draw_room_status()
-        self._draw_medicine_stock()
-        self._draw_revenue_chart()
+        
+        if self.role != "doctor":
+            self._draw_medicine_stock()
+            self._draw_revenue_chart()
 
-    def _update_kpis(self):
-        stats = dao.get_dashboard_stats()
-        for key, card in self._kpi_frames.items():
-            card._val_lbl.setText(str(stats.get(key, 0)))
+
 
     def _draw_patients_bar(self):
         data = dao.get_patients_by_month()   # [(month_label, count), ...]
@@ -196,7 +248,13 @@ class StatsTab(QWidget):
         self.canvas_bar.draw()
 
     def _draw_diagnosis_pie(self):
-        data = dao.get_top_diagnoses()   # [(diagnosis, count), ...]
+        m = getattr(self, "diag_month_combo", None)
+        if m:
+            month = m.currentIndex() + 1
+            year = int(self.diag_year_combo.currentText())
+            data = dao.get_top_diagnoses(month=month, year=year)
+        else:
+            data = dao.get_top_diagnoses()
         ax = self.canvas_pie.axes
         ax.clear()
         if not data:
@@ -222,7 +280,18 @@ class StatsTab(QWidget):
         self.canvas_pie.draw()
 
     def _draw_appointments_by_doctor(self):
-        data = dao.get_appointments_by_doctor()   # [(doctor_name, count), ...]
+        cb = getattr(self, "appt_type_combo", None)
+        if cb:
+            ft = "month" if cb.currentText() == "Theo tháng" else "week"
+            val = self.appt_val_combo.currentIndex() + 1
+            y = int(self.appt_year_combo.currentText())
+            if ft == "month":
+                data = dao.get_appointments_by_doctor(filter_type="month", month=val, year=y)
+            else:
+                w_str = f"{y}-W{val:02d}"
+                data = dao.get_appointments_by_doctor(filter_type="week", week_str=w_str)
+        else:
+            data = dao.get_appointments_by_doctor()
         ax = self.canvas_doctor.axes
         ax.clear()
         if not data:
@@ -245,31 +314,7 @@ class StatsTab(QWidget):
         self.canvas_doctor.fig.tight_layout()
         self.canvas_doctor.draw()
 
-    def _draw_room_status(self):
-        rooms = dao.get_all_rooms()
-        ax = self.canvas_room.axes
-        ax.clear()
-        if not rooms:
-            ax.text(0.5, 0.5, "Chưa có phòng", ha="center", va="center",
-                    transform=ax.transAxes, color="#a0aec0")
-        else:
-            from collections import Counter
-            status_counts = Counter(r["status"] for r in rooms)
-            labels = list(status_counts.keys())
-            values = list(status_counts.values())
-            color_map = {"Trống":"#68d391","Đang dùng":"#4299e1","Bảo trì":"#f6ad55"}
-            colors_list = [color_map.get(l,"#cbd5e0") for l in labels]
-            wedges, texts, autotexts = ax.pie(
-                values, labels=labels, autopct="%1.0f%%",
-                colors=colors_list, startangle=90,
-                wedgeprops={"edgecolor":"white","linewidth":2},
-                textprops={"fontsize":9}
-            )
-            for at in autotexts:
-                at.set_fontsize(9); at.set_fontweight("bold")
-            ax.set_title("Trạng thái phòng bệnh", fontsize=11, fontweight="bold", pad=10)
-        self.canvas_room.fig.tight_layout()
-        self.canvas_room.draw()
+
 
     def _draw_medicine_stock(self):
         meds = dao.get_all_medicines()
@@ -302,7 +347,18 @@ class StatsTab(QWidget):
         self.canvas_medicine.draw()
 
     def _draw_revenue_chart(self):
-        data = dao.get_revenue_by_month()
+        cb = getattr(self, "rev_type_combo", None)
+        if cb:
+            ft = "month" if cb.currentText() == "Theo tháng" else "week"
+            val = self.rev_val_combo.currentIndex() + 1
+            y = int(self.rev_year_combo.currentText())
+            if ft == "month":
+                data = dao.get_revenue_by_time(filter_type="month", month=val, year=y)
+            else:
+                w_str = f"{y}-W{val:02d}"
+                data = dao.get_revenue_by_time(filter_type="week", week_str=w_str)
+        else:
+            data = dao.get_revenue_by_time()
         ax = self.canvas_revenue.axes
         ax.clear()
         if not data:

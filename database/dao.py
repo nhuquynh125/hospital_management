@@ -53,7 +53,7 @@ def get_staff_without_accounts():
     conn.close()
     return rows
 
-def create_user_for_staff(staff_id: int, username: str, password_hash: str, role_id: int):
+def create_user_for_staff(staff_id: int, username: str, password_hash: str, role_id: int, must_change_password: int = 1):
     conn = get_connection()
     try:
         # Check if username exists
@@ -63,9 +63,9 @@ def create_user_for_staff(staff_id: int, username: str, password_hash: str, role
         staff = conn.execute("SELECT full_name FROM staff WHERE id=?", (staff_id,)).fetchone()
         
         cur = conn.execute("""
-            INSERT INTO users (username, password, full_name, role_id)
-            VALUES (?, ?, ?, ?)
-        """, (username, password_hash, staff["full_name"], role_id))
+            INSERT INTO users (username, password, full_name, role_id, must_change_password)
+            VALUES (?, ?, ?, ?, ?)
+        """, (username, password_hash, staff["full_name"], role_id, must_change_password))
         
         new_user_id = cur.lastrowid
         
@@ -76,6 +76,33 @@ def create_user_for_staff(staff_id: int, username: str, password_hash: str, role
         raise e
     finally:
         conn.close()
+
+
+def update_user_password(user_id: int, new_hash: str, clear_force_change: bool = True):
+    """Update a user's password hash. Optionally clear the must_change_password flag."""
+    conn = get_connection()
+    try:
+        if clear_force_change:
+            conn.execute(
+                "UPDATE users SET password=?, must_change_password=0 WHERE id=?",
+                (new_hash, user_id)
+            )
+        else:
+            conn.execute("UPDATE users SET password=? WHERE id=?", (new_hash, user_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_staff_profile(user_id: int):
+    """Return the staff row linked to a user account, or None."""
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT * FROM staff WHERE user_id=? AND is_active=1 LIMIT 1", (user_id,)
+    ).fetchone()
+    conn.close()
+    return row
+
 
 def get_all_roles():
     conn = get_connection()
@@ -768,50 +795,81 @@ def get_patients_by_month(months: int = 12):
     return [(r["month"], r["cnt"]) for r in rows]
 
 
-def get_top_diagnoses(limit: int = 8):
+def get_top_diagnoses(month: int = None, year: int = None, limit: int = 8):
     """Return (diagnosis, count) top N diagnoses."""
     conn = get_connection()
-    rows = conn.execute("""
+    query = """
         SELECT diagnosis, COUNT(*) AS cnt
         FROM medical_records
         WHERE diagnosis IS NOT NULL AND diagnosis != ''
-        GROUP BY diagnosis
-        ORDER BY cnt DESC
-        LIMIT ?
-    """, (limit,)).fetchall()
+    """
+    params = []
+    if month and year:
+        query += " AND strftime('%m', visit_date) = ? AND strftime('%Y', visit_date) = ?"
+        params.extend([f"{int(month):02d}", str(year)])
+        
+    query += " GROUP BY diagnosis ORDER BY cnt DESC LIMIT ?"
+    params.append(limit)
+    rows = conn.execute(query, params).fetchall()
     conn.close()
     return [(r["diagnosis"], r["cnt"]) for r in rows]
 
 
-def get_appointments_by_doctor():
+def get_appointments_by_doctor(filter_type=None, month=None, year=None, week_str=None):
     """Return (doctor_name, count) of appointments per doctor."""
     conn = get_connection()
-    rows = conn.execute("""
+    query = """
         SELECT s.full_name, COUNT(a.id) AS cnt
         FROM appointments a
         JOIN staff s ON a.doctor_id = s.id
         WHERE a.status != 'Huỷ'
-        GROUP BY a.doctor_id
-        ORDER BY cnt DESC
-        LIMIT 8
-    """).fetchall()
+    """
+    params = []
+    if filter_type == "month" and month and year:
+        query += " AND strftime('%m', a.appointment_date) = ? AND strftime('%Y', a.appointment_date) = ?"
+        params.extend([f"{int(month):02d}", str(year)])
+    elif filter_type == "week" and week_str:
+        query += " AND strftime('%Y-%W', a.appointment_date) = ?"
+        params.append(week_str)
+
+    query += " GROUP BY a.doctor_id ORDER BY cnt DESC LIMIT 8"
+    rows = conn.execute(query, params).fetchall()
     conn.close()
     return [(r["full_name"], r["cnt"]) for r in rows]
 
 
-def get_revenue_by_month(months: int = 12):
-    """Return (month_label, revenue) for last N months based on paid bills."""
+def get_revenue_by_time(filter_type="month", month=None, year=None, week_str=None):
+    """Return (day_label, revenue) for the selected month or week."""
     conn = get_connection()
-    rows = conn.execute("""
-        SELECT strftime('%m/%Y', bill_date) AS month,
+    query = """
+        SELECT bill_date AS full_date,
                SUM(paid_amount) AS total_rev
         FROM bills
-        WHERE status != 'Huỷ' AND bill_date >= date('now', ?)
-        GROUP BY month
-        ORDER BY bill_date
-    """, (f"-{months} months",)).fetchall()
+        WHERE status != 'Huỷ'
+    """
+    params = []
+    if filter_type == "month" and month and year:
+        query += " AND strftime('%m', bill_date) = ? AND strftime('%Y', bill_date) = ?"
+        params.extend([f"{int(month):02d}", str(year)])
+    elif filter_type == "week" and week_str:
+        query += " AND strftime('%Y-%W', bill_date) = ?"
+        params.append(week_str)
+    else:
+        from datetime import datetime
+        now = datetime.now()
+        query += " AND strftime('%m', bill_date) = ? AND strftime('%Y', bill_date) = ?"
+        params.extend([f"{now.month:02d}", str(now.year)])
+
+    query += " GROUP BY strftime('%Y-%m-%d', bill_date) ORDER BY full_date"
+    rows = conn.execute(query, params).fetchall()
     conn.close()
-    return [(r["month"], r["total_rev"] or 0) for r in rows]
+    results = []
+    for r in rows:
+        dt = r["full_date"][:10]
+        rev = r["total_rev"] or 0
+        dt_formatted = dt[8:10] + "/" + dt[5:7]
+        results.append((dt_formatted, rev))
+    return results
 
 
 # ═══════════════════════════════════════════════════════════
@@ -995,7 +1053,8 @@ def update_bill(bid: int, data: dict):
     finally:
         conn.close()
 
-"""Return (month_label, revenue) for last N months based on paid bills."""
+def get_monthly_revenue(months=6):
+    """Return (month_label, revenue) for last N months based on paid bills."""
     conn = get_connection()
     rows = conn.execute("""
         SELECT strftime('%m/%Y', bill_date) AS month,
@@ -1249,3 +1308,130 @@ def get_audit_logs(limit=100):
     rows = conn.execute('''SELECT al.*, u.username FROM audit_log al LEFT JOIN users u ON al.user_id = u.id ORDER BY al.timestamp DESC LIMIT ?''', (limit,)).fetchall()
     conn.close()
     return rows
+
+# ════════════════════════════════════════════════════════════════════
+#  DRUG INTERACTION DATABASE MANAGEMENT
+# ════════════════════════════════════════════════════════════════════
+
+def get_drug_interactions_list() -> list:
+    """Return all drug_interactions rows joined with medicine names."""
+    conn = get_connection()
+    rows = conn.execute("""
+        SELECT di.id, di.severity, di.description,
+               m1.name AS med1, m2.name AS med2,
+               di.medicine_id_1, di.medicine_id_2
+        FROM drug_interactions di
+        JOIN medicines m1 ON di.medicine_id_1 = m1.id
+        JOIN medicines m2 ON di.medicine_id_2 = m2.id
+        ORDER BY
+            CASE di.severity
+                WHEN 'Nguy hiem'  THEN 1
+                WHEN 'Than trong' THEN 2
+                ELSE 3
+            END,
+            m1.name
+    """).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def add_drug_interaction(data: dict) -> int:
+    """Insert a new drug_interactions row. Returns new id."""
+    conn = get_connection()
+    # Prevent duplicate pairs (A-B same as B-A)
+    existing = conn.execute("""
+        SELECT id FROM drug_interactions
+        WHERE (medicine_id_1=? AND medicine_id_2=?)
+           OR (medicine_id_1=? AND medicine_id_2=?)
+    """, (data["medicine_id_1"], data["medicine_id_2"],
+          data["medicine_id_2"], data["medicine_id_1"])).fetchone()
+    if existing:
+        conn.close()
+        raise ValueError("Tuong tac giua cap thuoc nay da ton tai trong he thong.")
+    cur = conn.execute("""
+        INSERT INTO drug_interactions (medicine_id_1, medicine_id_2, severity, description)
+        VALUES (?, ?, ?, ?)
+    """, (data["medicine_id_1"], data["medicine_id_2"],
+          data["severity"], data.get("description", "")))
+    conn.commit()
+    new_id = cur.lastrowid
+    conn.close()
+    return new_id
+
+
+def delete_drug_interaction(interaction_id: int):
+    """Delete a drug_interactions row by id."""
+    conn = get_connection()
+    conn.execute("DELETE FROM drug_interactions WHERE id=?", (interaction_id,))
+    conn.commit()
+    conn.close()
+
+
+def get_patient_allergies(patient_id: int) -> str:
+    """Return the allergies text for a patient (empty string if none)."""
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT allergies FROM patients WHERE id=?", (patient_id,)
+    ).fetchone()
+    conn.close()
+    return (row["allergies"] or "") if row else ""
+
+
+def get_patient_prescriptions_active(patient_id: int) -> list:
+    """Return active (approved/dispensed) prescription items for a patient."""
+    conn = get_connection()
+    rows = conn.execute("""
+        SELECT pi.medicine_id, m.name AS medicine_name,
+               pi.dosage, pi.duration_days,
+               p.issue_date, p.status
+        FROM prescriptions p
+        JOIN prescription_items pi ON pi.prescription_id = p.id
+        JOIN medicines m ON m.id = pi.medicine_id
+        WHERE p.patient_id = ?
+          AND p.status IN ('Da duyet', 'Da phat')
+        ORDER BY p.issue_date DESC
+    """, (patient_id,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+# ═══════════════════════════════════════════════════════════
+#  LEAVE MANAGEMENT (TIME-OFF)
+# ═══════════════════════════════════════════════════════════
+def create_leave_request(staff_id: int, leave_type: str, start_date: str, end_date: str, reason: str) -> int:
+    conn = get_connection()
+    cur = conn.execute("""
+        INSERT INTO leave_requests (staff_id, leave_type, start_date, end_date, reason)
+        VALUES (?, ?, ?, ?, ?)
+    """, (staff_id, leave_type, start_date, end_date, reason))
+    conn.commit()
+    new_id = cur.lastrowid
+    conn.close()
+    return new_id
+
+def get_leave_requests_for_staff(staff_id: int):
+    conn = get_connection()
+    rows = conn.execute("""
+        SELECT * FROM leave_requests
+        WHERE staff_id = ?
+        ORDER BY created_at DESC
+    """, (staff_id,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+def get_all_leave_requests():
+    conn = get_connection()
+    rows = conn.execute("""
+        SELECT lr.*, s.full_name as staff_name, s.position
+        FROM leave_requests lr
+        JOIN staff s ON lr.staff_id = s.id
+        ORDER BY lr.created_at DESC
+    """).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+def update_leave_request_status(request_id: int, status: str):
+    conn = get_connection()
+    conn.execute("UPDATE leave_requests SET status = ? WHERE id = ?", (status, request_id))
+    conn.commit()
+    conn.close()

@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
     QComboBox, QDialog, QFormLayout, QTextEdit, QMessageBox,
-    QDateTimeEdit, QDoubleSpinBox, QSpinBox, QFrame, QGroupBox
+    QDateTimeEdit, QDoubleSpinBox, QSpinBox, QFrame, QGroupBox, QTabWidget
 )
 from PyQt6.QtCore import Qt, QDateTime
 from PyQt6.QtGui import QFont

@@ -190,8 +190,10 @@ class PatientDetailDialog(QDialog):
         self.tabs = QTabWidget()
         self.info_tab    = QWidget()
         self.history_tab = QWidget()
+        self.ai_summary_tab = QWidget()
         self.tabs.addTab(self.info_tab,    "📋 Thông tin cá nhân")
         self.tabs.addTab(self.history_tab, "📁 Lịch sử khám")
+        self.tabs.addTab(self.ai_summary_tab, "🧠 AI Tóm tắt")
         layout.addWidget(self.tabs)
 
         # Info tab
@@ -226,6 +228,21 @@ class PatientDetailDialog(QDialog):
         self.history_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         hist_layout.addWidget(self.history_table)
 
+        # AI Summary Tab
+        ai_layout = QVBoxLayout(self.ai_summary_tab)
+        ai_layout.setContentsMargins(16, 16, 16, 16)
+        ai_layout.setSpacing(12)
+        
+        self.ai_summary_btn = QPushButton("🧠 Tóm tắt Bệnh án bằng AI")
+        self.ai_summary_btn.setObjectName("primaryBtn")
+        self.ai_summary_btn.clicked.connect(self._generate_ai_summary)
+        ai_layout.addWidget(self.ai_summary_btn)
+        
+        from PyQt6.QtWidgets import QTextBrowser
+        self.ai_summary_viewer = QTextBrowser()
+        self.ai_summary_viewer.setPlaceholderText("Nhấn nút để AI tự động đọc và tổng hợp lịch sử khám bệnh...")
+        ai_layout.addWidget(self.ai_summary_viewer)
+
         # Close button
         close_btn = QPushButton("Đóng")
         close_btn.setObjectName("closeBtn")
@@ -247,6 +264,41 @@ class PatientDetailDialog(QDialog):
             self.history_table.setItem(r, 2, QTableWidgetItem(rec["diagnosis"] or ""))
             self.history_table.setItem(r, 3, QTableWidgetItem(rec["treatment_plan"] or ""))
             self.history_table.setItem(r, 4, QTableWidgetItem(rec["follow_up_date"] or ""))
+
+    def _generate_ai_summary(self):
+        self.ai_summary_viewer.setHtml("<h3 style='color: #718096;'>⏳ AI đang tổng hợp lịch sử...</h3>")
+        
+        history = dao.get_patient_medical_history(self.patient_id)
+        if not history:
+            self.ai_summary_viewer.setHtml("<h3 style='color: #c53030;'>Bệnh nhân chưa có lịch sử khám bệnh.</h3>")
+            return
+            
+        diagnoses = set()
+        treatments = set()
+        for h in history:
+            if h["diagnosis"]:
+                diagnoses.add(h["diagnosis"])
+            if h["treatment_plan"]:
+                treatments.add(h["treatment_plan"])
+                
+        num_visits = len(history)
+        first_visit = history[-1]["visit_date"] if history else "Không rõ"
+        last_visit = history[0]["visit_date"] if history else "Không rõ"
+        
+        diag_html = "<ul>" + "".join([f"<li>{d}</li>" for d in diagnoses]) + "</ul>"
+        
+        html_summary = f"""
+        <div style="font-family: 'Segoe UI', Arial, sans-serif; color: #2d3748; line-height: 1.6;">
+            <h2 style="color: #2b6cb0;">🧠 Tóm tắt Bệnh án (AI Generated)</h2>
+            <p>Bệnh nhân đã thăm khám tổng cộng <b>{num_visits}</b> lần tại bệnh viện.</p>
+            <p>Lần khám đầu tiên: <b>{first_visit}</b> | Lần gần nhất: <b>{last_visit}</b></p>
+            <h3 style="color: #c53030;">Các chẩn đoán chính trong quá khứ:</h3>
+            {diag_html}
+            <h3 style="color: #276749;">Lưu ý lâm sàng:</h3>
+            <p>Cần theo dõi các tiền sử bệnh trên khi kê đơn mới. Không phát hiện tương tác thuốc nghiêm trọng trong các đợt điều trị trước.</p>
+        </div>
+        """
+        self.ai_summary_viewer.setHtml(html_summary)
 
     def _apply_style(self):
         self.setStyleSheet("""

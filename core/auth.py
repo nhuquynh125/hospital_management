@@ -19,6 +19,10 @@ ROLES = {
     "cashier":        "Thu ngân",
     "department_head":"Trưởng khoa",
     "hr_manager":     "Quản lý nhân sự",
+    "security_guard":  "Bảo vệ",
+    "ambulance_driver":"Lái xe cứu thương",
+    "janitor":         "Nhân viên vệ sinh",
+
 }
 
 ROLE_LABELS = {v: k for k, v in ROLES.items()}  # reverse lookup

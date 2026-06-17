@@ -95,7 +95,7 @@ class ExportTab(QWidget):
 
         # Note about required packages
         note = QLabel(
-            "ℹ️  Yêu cầu: <b>pip install reportlab openpyxl</b><br>"
+            #"ℹ️  Yêu cầu: <b>pip install reportlab openpyxl</b><br>"
             "File xuất sẽ được lưu vào thư mục <b>~/Downloads/HospitalExports/</b>"
         )
         note.setStyleSheet("""

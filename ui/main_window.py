@@ -16,7 +16,10 @@ from ui.lab_tab           import LabTab
 from ui.billing_tab       import BillingTab
 from ui.export_tab        import ExportTab
 from ui.stats_tab         import StatsTab
-from ui.ai_prediction_tab import AIPredictionTab
+from ui.drug_interaction_tab import DrugInteractionTab
+from ui.executive_report_tab import ExecutiveReportTab
+from ui.fraud_detection_tab import FraudDetectionTab
+from ui.predictive_analytics_tab import PredictiveAnalyticsTab
 from ui.chatbot_tab       import ChatbotTab
 from ui.settings_tab      import SettingsTab
 from ui.audit_log_tab     import AuditLogTab
@@ -79,7 +82,6 @@ class MainWindow(QMainWindow):
         # ── Navigation items: (icon, label, module, factory) ──────
         # module controls visibility per role
         nav_items = [
-            ("📊","Dashboard",          "patients",        self._make_dashboard),
             ("👥","Bệnh nhân",          "patients",        lambda: PatientTab()),
             ("👨‍⚕️","Nhân viên",        "staff",           lambda: StaffTab()),
             ("🗓️","Lịch hẹn",          "appointments",    lambda: AppointmentTab()),
@@ -88,13 +90,22 @@ class MainWindow(QMainWindow):
             ("💊","Thuốc & Kê đơn",    "medicines",       lambda: MedicineTab()),
             ("🔬","Xét nghiệm",        "lab",             lambda: LabTab()),
             ("💰","Viện phí",           "billing",         lambda: BillingTab()),
-            ("📊","Thống kê",           "reports",         lambda: StatsTab()),
+            ("📊","Thống kê",           "reports",         lambda: StatsTab(role=role_key)),
+            ("📋","Báo cáo Điều hành",  "reports",         lambda: ExecutiveReportTab()),
+            ("🔮","Dự báo Lượng bệnh",  "reports",         lambda: PredictiveAnalyticsTab()),
             ("📤","Xuất báo cáo",       "export",          lambda: ExportTab()),
-            ("🔮","Dự đoán bệnh",        "ai",              lambda: AIPredictionTab()),
             ("💬","Chatbot AI",        "ai",              lambda: ChatbotTab()),
+            ("💊","Canh bao Tuong tac",  "drug_interaction", lambda: DrugInteractionTab()),
             ("🛡️","Audit Trail",       "audit_logs",      lambda: AuditLogTab()),
         ]
-        if role_key == "admin":
+
+        if role_key == "doctor":
+            lich_hen_idx = next((i for i, item in enumerate(nav_items) if item[1] == "Lịch hẹn"), -1)
+            if lich_hen_idx != -1:
+                lich_hen_item = nav_items.pop(lich_hen_idx)
+                nav_items.insert(0, lich_hen_item)
+
+        if role_key in ("admin", "director"):
             nav_items.append(("⚙️","Cài đặt / Backup","settings",lambda: SettingsTab()))
 
         self._stack = QStackedWidget()
@@ -150,73 +161,7 @@ class MainWindow(QMainWindow):
         self._tab_widgets[idx] = widget
         self._stack.setCurrentIndex(idx)
 
-    # ── Dashboard ────────────────────────────────────────────────
-    def _make_dashboard(self):
-        from database.dao import get_dashboard_stats
-        widget = QWidget()
-        layout = QVBoxLayout(widget)
-        layout.setContentsMargins(24,24,24,24); layout.setSpacing(16)
 
-        title = QLabel("📊 Dashboard tổng quan")
-        title.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
-        title.setStyleSheet("color:#1a365d;")
-        layout.addWidget(title)
-
-        role_label = auth.get_role_label(self.user["role"])
-        greet = QLabel(f"👋 Xin chào, <b>{self.user['full_name']}</b> &nbsp;|&nbsp; Vai trò: <b>{role_label}</b>")
-        greet.setStyleSheet("color:#4a5568; font-size:13px;")
-        layout.addWidget(greet)
-
-        stats = get_dashboard_stats()
-        cards_data = [
-            ("👥","Tổng bệnh nhân",    stats["total_patients"],         "#2b6cb0","#ebf8ff"),
-            ("👨‍⚕️","Nhân viên",       stats["total_staff"],            "#276749","#f0fff4"),
-            ("🗓️","Lịch hẹn hôm nay", stats["today_appointments"],     "#744210","#fffbeb"),
-            ("🏠","Phòng trống",       stats["available_rooms"],        "#553c9a","#faf5ff"),
-            ("⚠️","Thuốc sắp hết",    stats["low_stock_medicines"],    "#c53030","#fff5f5"),
-        ]
-
-        cards_row = QHBoxLayout(); cards_row.setSpacing(12)
-        for icon, label, value, color, bg in cards_data:
-            card = QFrame()
-            card.setStyleSheet(f"""
-                QFrame {{ background:{bg}; border-radius:12px; border:1px solid {color}30; }}
-            """)
-            cl = QVBoxLayout(card); cl.setContentsMargins(16,14,16,14); cl.setSpacing(2)
-            il = QLabel(icon); il.setFont(QFont("Segoe UI",22))
-            il.setStyleSheet("background:transparent;")
-            vl = QLabel(str(value)); vl.setFont(QFont("Segoe UI",26,QFont.Weight.Bold))
-            vl.setStyleSheet(f"color:{color}; background:transparent;")
-            nl = QLabel(label); nl.setStyleSheet(f"color:{color}; font-size:11px; background:transparent;")
-            cl.addWidget(il); cl.addWidget(vl); cl.addWidget(nl)
-            cards_row.addWidget(card)
-        layout.addLayout(cards_row)
-
-        # Role-specific hint
-        hints = {
-            "admin":          "Bạn có toàn quyền quản lý hệ thống.",
-            "doctor":         "Xem lịch hẹn, hồ sơ bệnh nhân và kê đơn thuốc.",
-            "nurse":          "Ghi chú chăm sóc, dấu hiệu sinh tồn, theo dõi bệnh nhân.",
-            "receptionist":   "Quản lý lịch hẹn và tiếp nhận bệnh nhân.",
-            "pharmacist":     "Duyệt đơn thuốc và quản lý kho dược.",
-            "accountant":     "Quản lý viện phí và lập báo cáo.",
-            "lab_technician": "Thực hiện xét nghiệm và nhập kết quả.",
-            "director":       "Xem báo cáo tổng hợp và thống kê toàn bệnh viện.",
-            "cashier":        "Xử lý thanh toán tại quầy và in biên lai.",
-            "department_head":"Quản lý bác sĩ trong khoa, duyệt nghỉ phép và xem báo cáo khoa.",
-            "hr_manager":     "Quản lý hồ sơ nhân viên, theo dõi chấm công và tính lương.",
-        }
-        hint_txt = hints.get(self.user["role"],"")
-        if hint_txt:
-            hint = QLabel(f"💡 {hint_txt}")
-            hint.setStyleSheet("""
-                background:#fffbeb; color:#744210; border:1px solid #f6e05e;
-                border-radius:8px; padding:10px 14px; font-size:12px;
-            """)
-            layout.addWidget(hint)
-
-        layout.addStretch()
-        return widget
 
     # ── Logout ───────────────────────────────────────────────────
     def _logout(self):
@@ -267,4 +212,5 @@ class MainWindow(QMainWindow):
         #logoutBtn:hover { background:#742a2a20; }
         #contentArea { background:#f7fafc; }
         """)
+
 

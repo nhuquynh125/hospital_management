@@ -36,8 +36,17 @@ def main():
     login_win = LoginWindow()
 
     def on_login_success(user: dict):
-        window = MainWindow(user)
-        window.show()
+        # ── First-login enforcement ──────────────────────────────────
+        if user.get("must_change_password", 0):
+            dlg = ForcePasswordDialog(user, parent=None)
+            def _after_change():
+                window = MainWindow(user)
+                window.show()
+            dlg.password_changed.connect(_after_change)
+            dlg.exec()   # blocks until password is changed (cannot be dismissed)
+        else:
+            window = MainWindow(user)
+            window.show()
 
     login_win.login_success.connect(on_login_success)
     login_win.show()

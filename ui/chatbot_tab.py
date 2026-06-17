@@ -1,4 +1,4 @@
-﻿import os
+import os
 import datetime
 
 from PyQt6.QtWidgets import (
@@ -21,6 +21,8 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
 GEMINI_MODEL   = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash").strip()
 
 try:
+    import warnings
+    warnings.filterwarnings("ignore", category=FutureWarning, module="google.generativeai")
     import google.generativeai as genai
     GEMINI = True
     if GEMINI_API_KEY:

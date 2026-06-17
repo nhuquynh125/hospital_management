@@ -93,10 +93,17 @@ class RegisterDialog(QDialog):
                 conn.close()
                 return
                 
+            role_row = conn.execute("SELECT id FROM roles WHERE role_name=?", (role,)).fetchone()
+            if not role_row:
+                QMessageBox.warning(self, "Lỗi", "Vai trò không hợp lệ.")
+                conn.close()
+                return
+            role_id = role_row["id"]
+                
             hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
             conn.execute(
-                "INSERT INTO users (username, password, full_name, role) VALUES (?,?,?,?)",
-                (username, hashed, full_name, role)
+                "INSERT INTO users (username, password, full_name, role_id) VALUES (?,?,?,?)",
+                (username, hashed, full_name, role_id)
             )
             conn.commit()
             conn.close()

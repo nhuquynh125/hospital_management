@@ -65,7 +65,9 @@ python main.py
 | thungan01   | cashier123  | Thu ngân        | Xử lý thanh toán, In hóa đơn          |
 | truongkhoa01| head123     | Trưởng khoa     | Quản lý khoa, Lịch hẹn, Bệnh án       |
 | nhansu01    | hr123       | Quản lý nhân sự | Hồ sơ nhân sự, Chấm công              |
-
+| baove01     | guard123    | Bảo vệ          | Xem hồ sơ cá nhân, Xin nghỉ phép, Phiếu lương |
+| laixe01     | driver123   | Lái xe cứu thương| Xem hồ sơ cá nhân, Xin nghỉ phép, Phiếu lương |
+| vesinh01    | janitor123  | Nhân viên vệ sinh| Xem hồ sơ cá nhân, Xin nghỉ phép, Phiếu lương |
 ---
 
 ## 🔌 Mở trong PyCharm

@@ -47,7 +47,8 @@ def init_db():
         password    TEXT NOT NULL,
         full_name   TEXT NOT NULL,
         role_id     INTEGER REFERENCES roles(id),
-        is_active   INTEGER DEFAULT 1,
+        is_active              INTEGER DEFAULT 1,
+        must_change_password   INTEGER DEFAULT 0,
         created_at  TEXT DEFAULT (datetime('now','localtime'))
     )""")
 
@@ -293,7 +294,23 @@ def init_db():
         timestamp   TEXT DEFAULT (datetime('now','localtime'))
     )""")
 
+    # ── Leave Requests ────────────────────────────────────────────
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS leave_requests (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        staff_id    INTEGER NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+        leave_type  TEXT NOT NULL CHECK(leave_type IN ('Nghỉ ốm', 'Nghỉ phép năm', 'Nghỉ không lương', 'Khác')),
+        start_date  TEXT NOT NULL,
+        end_date    TEXT NOT NULL,
+        reason      TEXT NOT NULL,
+        status      TEXT DEFAULT 'Chờ duyệt' CHECK(status IN ('Chờ duyệt', 'Đã duyệt', 'Từ chối')),
+        created_at  TEXT DEFAULT (datetime('now','localtime'))
+    )""")
+
     conn.commit()
+    # ── Live migrations for existing databases ──────────────────────────────
+    _migrate_db(conn, cur)
+    # ───────────────────────────────────────────────────────────────────────
     _seed_rbac(cur, conn)
     _seed_users(cur, conn)
     _seed_data(cur, conn)
@@ -302,6 +319,46 @@ def init_db():
         print(f"[DB] Database initialized -> {DB_PATH}")
     except UnicodeEncodeError:
         print("[DB] Database initialized -> (path contains unicode)")
+
+
+
+def _migrate_db(conn, cur):
+    """Apply incremental schema changes to existing databases safely."""
+    # must_change_password column (v2 addition)
+    cols = [row[1] for row in cur.execute("PRAGMA table_info(users)").fetchall()]
+    if "must_change_password" not in cols:
+        cur.execute("ALTER TABLE users ADD COLUMN must_change_password INTEGER DEFAULT 0")
+        conn.commit()
+
+    # leave_requests table (v3 addition)
+    tables = [row[0] for row in cur.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()]
+    if "leave_requests" not in tables:
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS leave_requests (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            staff_id    INTEGER NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+            leave_type  TEXT NOT NULL CHECK(leave_type IN ('Nghỉ ốm', 'Nghỉ phép năm', 'Nghỉ không lương', 'Khác')),
+            start_date  TEXT NOT NULL,
+            end_date    TEXT NOT NULL,
+            reason      TEXT NOT NULL,
+            status      TEXT DEFAULT 'Chờ duyệt' CHECK(status IN ('Chờ duyệt', 'Đã duyệt', 'Từ chối')),
+            created_at  TEXT DEFAULT (datetime('now','localtime'))
+        )""")
+        conn.commit()
+
+    # Give 'settings' permission to director
+    try:
+        cur.execute("SELECT id FROM roles WHERE role_name='director'")
+        director_role = cur.fetchone()
+        if director_role:
+            role_id = director_role[0]
+            cur.execute("SELECT id FROM permissions WHERE permission_name='settings'")
+            perm_id = cur.fetchone()
+            if perm_id:
+                cur.execute("INSERT OR IGNORE INTO role_permissions (role_id, permission_id) VALUES (?, ?)", (role_id, perm_id[0]))
+                conn.commit()
+    except Exception as e:
+        pass
 
 
 def _seed_rbac(cur, conn):
@@ -321,30 +378,46 @@ def _seed_rbac(cur, conn):
         ("director", "Giám đốc"),
         ("cashier", "Thu ngân"),
         ("department_head", "Trưởng khoa"),
-        ("hr_manager", "Quản lý nhân sự")
+        ("hr_manager", "Quản lý nhân sự"),
+            ("security_guard",   "Bao ve"),
+        ("ambulance_driver", "Lai xe cuu thuong"),
+        ("janitor",          "Nhan vien ve sinh"),
     ]
     cur.executemany("INSERT INTO roles (role_name, description) VALUES (?,?)", roles)
 
     permissions = [
         "patients", "staff", "appointments", "medical_records", "medical_orders",
-        "medicines", "pharmacy", "rooms", "billing", "lab", "reports", "export", 
-        "settings", "ai", "audit_logs"
+        "medicines", "pharmacy", "rooms", "billing", "lab", "reports", "export",
+        "settings", "ai", "drug_interaction", "audit_logs",
+        "settings.personal_info", "settings.leave", "settings.salary_view",
+        "settings.salary_config", "settings.security"
     ]
     cur.executemany("INSERT INTO permissions (permission_name) VALUES (?)", [(p,) for p in permissions])
 
     # Mapping roles to permissions
     role_perms = {
         "admin": ["staff", "settings", "audit_logs", "billing"], # Billing just to see issues, no medical records
-        "doctor": ["patients", "appointments", "medical_records", "medicines", "lab", "reports", "export", "ai"],
-        "nurse": ["patients", "appointments", "medical_records", "medical_orders", "rooms", "reports", "ai"],
+        "doctor": ["patients", "appointments", "medical_records", "medicines", "lab", "reports", "export", "ai", "drug_interaction"],
+        "nurse": ["patients", "appointments", "medical_records", "medical_orders", "rooms", "reports", "ai", "drug_interaction"],
         "receptionist": ["patients", "appointments", "rooms", "billing", "reports"],
-        "pharmacist": ["medicines", "pharmacy", "reports", "ai"],
+        "pharmacist": ["medicines", "pharmacy", "reports", "ai", "drug_interaction"],
         "accountant": ["billing", "reports", "export"],
         "lab_technician": ["lab", "reports", "ai"],
-        "director": ["patients", "staff", "appointments", "rooms", "reports", "export", "ai", "billing"],
+        "director": ["patients", "staff", "appointments", "rooms", "reports", "export", "ai", "drug_interaction", "billing"],
         "cashier": ["billing"],
-        "department_head": ["patients", "appointments", "medical_records", "medicines", "lab", "reports", "export", "ai", "staff"],
-        "hr_manager": ["staff", "export"]
+        "department_head": ["patients", "appointments", "medical_records", "medicines", "lab", "reports", "export", "ai", "drug_interaction", "staff"],
+        "hr_manager": ["staff", "export",
+                       "settings.personal_info", "settings.leave",
+                       "settings.salary_view", "settings.salary_config", "settings.security"],
+        # ── Full-access roles get all settings sections ──
+        **{role: ["settings.personal_info", "settings.leave",
+                   "settings.salary_view", "settings.salary_config", "settings.security"]
+           for role in ["doctor", "nurse", "receptionist", "pharmacist", "accountant",
+                        "cashier", "lab_technician", "director", "department_head"]},
+        # ── Support staff: limited settings only ──
+        "security_guard":   ["settings.personal_info", "settings.salary_view", "settings.security"],
+        "ambulance_driver":  ["settings.personal_info", "settings.salary_view", "settings.security"],
+        "janitor":           ["settings.personal_info", "settings.salary_view", "settings.security"],
     }
 
     # Fetch IDs
@@ -382,6 +455,9 @@ def _seed_users(cur, conn):
         ("thungan01",    "cashier123", "TN. Nguyễn Thị Lệ",     "cashier"),
         ("truongkhoa01", "head123",    "TK. Phạm Văn B",        "department_head"),
         ("nhansu01",     "hr123",      "HR. Lê Thị C",          "hr_manager"),
+        ("baove01",      "guard123",   "BV. Lê Văn Tuấn",       "security_guard"),
+        ("laixe01",      "driver123",  "LX. Trần Hữu Đức",      "ambulance_driver"),
+        ("vesinh01",     "janitor123", "VS. Nguyễn Thị Hạnh",   "janitor"),
     ]
     for username, password, full_name, role_name in demo_accounts:
         hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
@@ -421,6 +497,9 @@ def _seed_data(cur, conn):
         (6,"KT001","Ngô Văn Em",          "Nam","1990-07-08","079090033333","0945333444","em.nv@hospital.vn",   "Đà Nẵng","Kế toán",          "Kế toán",     9, "2019-01-15",15000000,1500000),
         (7,"XN001","KTV. Hoàng Thị Phương","Nữ","1992-04-17","079092044444","0956444555","phuong.ht@hospital.vn","Đà Nẵng","Xét nghiệm viên", "Xét nghiệm",  7, "2017-07-01",16000000,1800000),
         (8,"GD001","GĐ. Vũ Đình Quang",   "Nam","1970-09-30","079070055555","0967555666","quang.vd@hospital.vn","Đà Nẵng","Giám đốc",         "Nội khoa",    1, "2005-01-01",50000000,10000000),
+        (12,"BV001","BV. Lê Văn Tuấn",    "Nam","1985-02-15","079085021111","0988111222",None,                 "Đà Nẵng","Bảo vệ",           None,          None,"2022-01-10",8000000,500000),
+        (13,"LX001","LX. Trần Hữu Đức",   "Nam","1990-10-20","079090102222","0977222333",None,                 "Đà Nẵng","Lái xe cứu thương",None,          None,"2021-05-15",10000000,800000),
+        (14,"VS001","VS. Nguyễn Thị Hạnh","Nữ", "1975-06-05","079075063333","0966333444",None,                 "Đà Nẵng","Nhân viên vệ sinh",None,          None,"2023-03-01",7000000,300000),
     ]
     cur.executemany("""
         INSERT INTO staff (user_id, staff_code, full_name, gender, birth_date, id_card,

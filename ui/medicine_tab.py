@@ -10,6 +10,7 @@ from PyQt6.QtCore import Qt, QDate
 from PyQt6.QtGui import QFont, QColor
 
 import database.dao as dao
+from ui.smart_inventory_tab import SmartInventoryWidget
 
 MEDICINE_CATEGORIES = [
     "Kháng sinh", "Giảm đau / Hạ sốt", "Tim mạch", "Tiêu hóa",
@@ -391,6 +392,10 @@ class MedicineTab(QWidget):
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(10)
 
+        import core.auth as auth
+        user = auth.get_current_user()
+        role = user.get("role") if user else None
+
         tabs = QTabWidget()
 
         # ── Sub-tab 1: Medicine inventory ─────────────────────────
@@ -453,7 +458,9 @@ class MedicineTab(QWidget):
         a_row.addWidget(self.delete_med_btn)
         a_row.addStretch()
         inv_layout.addLayout(a_row)
-        tabs.addTab(inv_widget, "💊 Kho thuốc")
+        
+        if role != "doctor":
+            tabs.addTab(inv_widget, "💊 Kho thuốc")
 
         # ── Sub-tab 2: Prescriptions ──────────────────────────────
         presc_widget = QWidget()
@@ -482,6 +489,11 @@ class MedicineTab(QWidget):
         self.presc_table.verticalHeader().setVisible(False)
         pl.addWidget(self.presc_table)
         tabs.addTab(presc_widget, "📋 Đơn thuốc")
+        
+        # ── Sub-tab 3: Smart Inventory (AI) ──────────────────────────────
+        if role != "doctor":
+            self.smart_inv_widget = SmartInventoryWidget()
+            tabs.addTab(self.smart_inv_widget, "🤖 Quản lý Kho Thông minh (AI)")
 
         layout.addWidget(tabs)
 
@@ -510,6 +522,9 @@ class MedicineTab(QWidget):
                     item.setForeground(QColor("#c53030"))
                 self.med_table.setItem(r, c, item)
         self.med_count_lbl.setText(f"Tổng: {len(rows)} loại thuốc")
+        if hasattr(self, "smart_inv_widget"):
+            self.smart_inv_widget.load_data()
+
 
         # Load prescriptions
         prescriptions = dao.get_all_prescriptions()
@@ -525,7 +540,7 @@ class MedicineTab(QWidget):
             # The query currently returns: id, issue_date, notes, patient_name, doctor_name, item_count
             # Wait, get_all_prescriptions in dao.py doesn't return 'status'.
             # I need to update get_all_prescriptions to return status as well!
-            status = p.get("status", "Chờ duyệt")
+            status = dict(p).get("status", "Chờ duyệt") if dict(p).get("status") else "Chờ duyệt"
             vals = [str(p["id"]), p["patient_name"] or "", p["doctor_name"] or "",
                     (p["issue_date"] or "")[:10], str(p["item_count"]), status]
             for c, v in enumerate(vals):

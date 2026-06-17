@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, Http, QHBoxLayout, QPushButton,
+    QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QTableWidget, QTableWidgetItem, QHeaderView, QLabel
 )
 from PyQt6.QtGui import QFont, QColor
