@@ -9,26 +9,36 @@ hospital_management/
 ├── hospital.db                    # SQLite DB (tự tạo khi chạy lần đầu)
 │
 ├── database/
-│   ├── schema.py                  # Khởi tạo 10 bảng + seed data mẫu
-│   └── dao.py                     # Tất cả SQL queries (Data Access Layer)
+│   ├── schema.py                  # Khởi tạo các bảng trong CSDL
+│   ├── dao.py                     # Tất cả SQL queries (Data Access Layer)
+│   └── generate_massive_data.py   # Script tạo dữ liệu mẫu (bệnh nhân, nhân sự, lịch hẹn...)
 │
 ├── core/
-│   └── auth.py                    # Đăng nhập, phân quyền, bcrypt
+│   └── auth.py                    # Đăng nhập, phân quyền, mã hóa mật khẩu bcrypt
 │
 ├── utils/
 │   └── search.py                  # Tìm kiếm NLP fuzzy (rapidfuzz)
-├── ui/
-│   ├── login_window.py            # Màn hình đăng nhập
-│   ├── main_window.py             # Cửa sổ chính + sidebar navigation
+│
+├── ui/                            # Giao diện người dùng (PyQt6)
+│   ├── appointment_tab.py         # 🗓️ Quản lý lịch hẹn
+│   ├── audit_log_tab.py           # 📝 Lịch sử hoạt động hệ thống (Audit Trail)
+│   ├── billing_tab.py             # 💰 Viện phí & Thanh toán
+│   ├── examination_dialog.py      # 🩺 Cửa sổ khám bệnh & chẩn đoán
+│   ├── force_password_dialog.py   # 🔐 Cửa sổ yêu cầu đổi mật khẩu lần đầu
+│   ├── lab_tab.py                 # 🔬 Quản lý xét nghiệm cận lâm sàng
+│   ├── leave_management_tab.py    # 🌴 Quản lý & duyệt đơn nghỉ phép
+│   ├── login_window.py            # 🔑 Màn hình đăng nhập
+│   ├── main_window.py             # 🪟 Cửa sổ chính + sidebar navigation
+│   ├── medical_order_tab.py       # 📋 Quản lý y lệnh
+│   ├── medicine_tab.py            # 💊 Kho thuốc & Kê đơn
+│   ├── nursing_tab.py             # 👩‍⚕️ Chăm sóc điều dưỡng & đo sinh hiệu
 │   ├── patient_tab.py             # 👥 Quản lý bệnh nhân
-│   ├── staff_tab.py               # 👨‍⚕️ Quản lý nhân viên
-│   ├── appointment_tab.py         # 🗓️ Quản lý lịch hẹn & tái khám
-
-│   ├── medicine_tab.py            # 💊 Thuốc, kê đơn
+│   ├── register_dialog.py         # 📝 Cửa sổ đăng ký mới
+│   ├── settings_tab.py            # ⚙️ Cài đặt, Backup/Restore, Đổi mật khẩu
+│   ├── shift_schedule_tab.py      # 🕒 Quản lý ca trực / lịch làm việc
+│   └── staff_tab.py               # 👨‍⚕️ Quản lý hồ sơ nhân viên
 │
-│   └── settings_tab.py            # ⚙️ Cài đặt, Backup/Restore, Đổi mật khẩu
-│
-└── backups/                       # Thư mục backup database
+└── backups/                       # Thư mục backup database tự động
 ```
 
 ---
@@ -76,63 +86,52 @@ Hệ thống phân quyền chặt chẽ (RBAC) với 14 vai trò. Mỗi vai trò
    - Cài đặt & Hệ thống (Backup/Restore, Cấu hình Lương, Phân quyền)
    
 2. **Giám đốc (Director)**
-   - Quản lý Bệnh nhân & Nhân viên
-   - Quản lý Lịch hẹn
-   - Viện phí & Thống kê tài chính
-   - Báo cáo Điều hành (Dashboard đặc biệt cho Giám đốc)
-   - Dự báo Lượng bệnh (AI Predictive Analytics)
+   - Toàn quyền xem và điều hành: Quản lý Bệnh nhân & Nhân viên, Lịch hẹn, Viện phí, Bệnh án, Y lệnh, Thuốc, Cài đặt... (Kế thừa quyền Bác sĩ và xem doanh thu).
 
 3. **Bác sĩ (Doctor)**
    - Quản lý Bệnh nhân & Xem lịch sử khám
    - Quản lý Lịch hẹn
-   - Bệnh án / Khám bệnh (Chẩn đoán, Y lệnh)
+   - Bệnh án / Khám bệnh (Chẩn đoán)
+   - Ra Y lệnh (Medical Orders)
    - Thuốc & Kê đơn
    - Xem kết quả Xét nghiệm
-   - Thống kê
 
 4. **Y tá / Điều dưỡng (Nurse)**
-   - Quản lý Bệnh nhân & Lịch hẹn
+   - Quản lý Bệnh nhân
    - Bệnh án (Ghi nhận sinh hiệu, Chăm sóc điều dưỡng)
-   - Xem Y lệnh từ bác sĩ
-
-   - Thống kê
+   - Xem và Cập nhật trạng thái Y lệnh từ bác sĩ
 
 5. **Trưởng khoa (Department Head)**
-   - Quản lý Nhân viên trong khoa, Lịch trực (Shift Schedule)
+   - Quản lý Nhân viên trong khoa, Lịch trực (Shift Schedule), Duyệt nghỉ phép
    - Quản lý Bệnh nhân, Lịch hẹn
    - Bệnh án, Thuốc & Kê đơn, Xét nghiệm
-   - Thống kê
 
 6. **Lễ tân (Receptionist)**
    - Quản lý Bệnh nhân (Tiếp nhận, đăng ký mới)
-   - Quản lý Lịch hẹn
-
-   - Viện phí (Xem thông tin), Thống kê cơ bản
+   - Quản lý Lịch hẹn (Thêm, sửa trạng thái - Không được xóa)
+   - Xem Viện phí
 
 7. **Dược sĩ (Pharmacist)**
-   - Quản lý Kho Thuốc (Nhập/Xuất, Kho thông minh)
+   - Quản lý Kho Thuốc (Nhập/Xuất)
    - Duyệt đơn thuốc & Cấp phát thuốc
-   - Thống kê kho thuốc
 
 8. **Xét nghiệm viên (Lab Technician)**
-   - Nhận yêu cầu và cập nhật kết quả Xét nghiệm
-   - Thống kê Xét nghiệm
+   - Nhận chỉ định xét nghiệm và cập nhật kết quả/file đính kèm
 
 9. **Kế toán (Accountant)**
-   - Quản lý Viện phí & Thanh toán
-   - Thống kê doanh thu
+   - Quản lý Viện phí & Danh sách hóa đơn (Xem)
 
 10. **Thu ngân (Cashier)**
-    - Xử lý Thanh toán viện phí & In hóa đơn
+    - Xử lý Thanh toán viện phí, In hóa đơn (Tạo hóa đơn, Cập nhật trạng thái: Chưa thanh toán, Một phần, Đã thanh toán)
 
 11. **Quản lý nhân sự (HR Manager)**
     - Quản lý Hồ sơ nhân viên
     - Quản lý Lịch làm việc/Ca trực (Shift Schedule)
-    - Cài đặt & Cấu hình Lương (Salary Config), Xin/Duyệt nghỉ phép
+    - Xin/Duyệt nghỉ phép
 
 12. **Bảo vệ / Lái xe cứu thương / Nhân viên vệ sinh**
     - Nhóm hỗ trợ nội bộ.
-    - Chức năng: Xem thông tin cá nhân, Đổi mật khẩu, Xem phiếu lương, Gửi yêu cầu Xin nghỉ phép.
+    - Chức năng: Xem thông tin cá nhân, Đổi mật khẩu, Gửi yêu cầu Xin nghỉ phép.
 
 ---
 
@@ -164,9 +163,9 @@ Hệ thống phân quyền chặt chẽ (RBAC) với 14 vai trò. Mỗi vai trò
 |-----------|-------|------|
 | RBAC (Đăng nhập & Phân quyền) | Quản lý bảo mật phân tầng 14 vai trò, mã hóa mật khẩu bằng bcrypt. | Bắt buộc |
 | Audit Trail (Lịch sử hoạt động) | Lưu vết mọi thay đổi dữ liệu trong hệ thống (ai làm, khi nào, sửa gì). | Bắt buộc |
-| Cài đặt Hệ thống & Cá nhân | Quản lý hồ sơ, đổi mật khẩu an toàn, xin nghỉ phép, xem phiếu lương. | Bắt buộc |
-| Quản lý Nhân sự & Lương | Thêm mới nhân sự, cấu hình bảng lương gốc, duyệt đơn xin nghỉ phép. | Nâng cao |
-| Lịch trực (Shift Schedule) | Giao diện xếp ca trực, ca làm việc linh hoạt cho đội ngũ y bác sĩ. | Nâng cao |
+| Cài đặt Hệ thống & Cá nhân | Quản lý hồ sơ, đổi mật khẩu an toàn, xin nghỉ phép. | Bắt buộc |
+| Quản lý Nhân sự | Thêm mới nhân sự, phân quyền, duyệt đơn xin nghỉ phép. | Nâng cao |
+| Lịch trực (Shift Schedule) | Giao diện xếp ca trực, ca làm việc linh hoạt cho đội ngũ. | Nâng cao |
 | Tìm kiếm thông minh (NLP) | Thuật toán Rapidfuzz cho phép tìm kiếm nhanh, gõ tiếng Việt không dấu. | Nâng cao |
 | Backup & Restore DB | Giao diện sao lưu cơ sở dữ liệu an toàn, chống mất mát dữ liệu. | Nâng cao |
 
@@ -174,24 +173,15 @@ Hệ thống phân quyền chặt chẽ (RBAC) với 14 vai trò. Mỗi vai trò
 | Tính năng | Mô tả | Loại |
 |-----------|-------|------|
 | Bệnh nhân & Lịch hẹn | Quản lý hồ sơ, BHYT, theo dõi trạng thái cuộc hẹn trực quan. | Bắt buộc |
-| Bệnh án & Y lệnh (Medical Orders)| Bác sĩ chẩn đoán, ra y lệnh. Y tá nhận lệnh, đo sinh hiệu và thực thi. | Nâng cao |
-| Kho Thuốc & Kê đơn | Cảnh báo tồn kho, hạn sử dụng. Kê đơn điện tử liên thông kho dược. | Nâng cao |
-| Xét nghiệm (Lab Tests) | Chỉ định cận lâm sàng, nhập kết quả dạng text hoặc đính kèm file ảnh/PDF.| Nâng cao |
-
-| Viện phí & Thanh toán | Tính toán chi phí khám/thuốc/dịch vụ tự động, in hóa đơn nhanh chóng. | Nâng cao |
-
-### 🤖 Phần 3 — Trí tuệ Nhân tạo (AI) & Báo cáo
-| Tính năng | Mô tả | Loại |
-|-----------|-------|------|
-| Dashboard Báo cáo Điều hành | Hệ thống biểu đồ trực quan (Matplotlib) theo dõi doanh thu và KPI bệnh viện. | Nâng cao |
-| AI Dự báo Lượng bệnh nhân | Phân tích xu hướng để dự báo lượng bệnh trong tương lai giúp sắp xếp nhân sự. | AI |
+| Khám bệnh & Y lệnh | Bác sĩ chẩn đoán, ra y lệnh. Y tá nhận lệnh, đo sinh hiệu và thực thi, cập nhật thời gian thực. | Nâng cao |
+| Kho Thuốc & Kê đơn | Cảnh báo tồn kho, hạn sử dụng. Kê đơn điện tử liên thông kho dược, duyệt phát thuốc. | Nâng cao |
+| Xét nghiệm (Lab Tests) | Bác sĩ chỉ định, xét nghiệm viên nhập kết quả hoặc đính kèm file. | Nâng cao |
+| Viện phí & Thanh toán | Theo dõi hóa đơn, trạng thái thanh toán (Chưa thanh toán, Một phần, Đã thanh toán), xuất PDF. | Nâng cao |
+| Ghi chú chăm sóc | Y tá lưu ghi chú về tình trạng chăm sóc hàng ngày của bệnh nhân. | Nâng cao |
 
 ---
-
-
 
 ## 📦 Yêu cầu hệ thống
 - Python 3.9+
 - Windows / macOS / Linux
-- RAM: ~256 MB (khi chạy với AI)
-
+- Thư viện PyQt6, SQLite3, reportlab, rapidfuzz...

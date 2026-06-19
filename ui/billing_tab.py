@@ -11,14 +11,13 @@ import database.dao as dao
 import core.auth as auth
 
 PAYMENT_METHODS = ["Tiền mặt","Chuyển khoản","BHYT","Thẻ"]
-BILL_STATUSES   = ["Chưa thanh toán","Đã thanh toán","Một phần","Huỷ"]
+BILL_STATUSES   = ["Chưa thanh toán","Đã thanh toán","1 phần"]
 ITEM_TYPES      = ["Khám","Thuốc","Xét nghiệm","Dịch vụ"]
 
 STATUS_COLORS = {
     "Chưa thanh toán": ("#fff3cd","#856404"),
     "Đã thanh toán":   ("#d4edda","#155724"),
-    "Một phần":        ("#cce5ff","#004085"),
-    "Huỷ":             ("#f8d7da","#721c24"),
+    "1 phần":        ("#cce5ff","#004085"),
 }
 
 
@@ -277,6 +276,13 @@ class BillingTab(QWidget):
         self.paid_btn.clicked.connect(self._mark_paid)
         a_row.addWidget(self.edit_btn); a_row.addWidget(self.paid_btn); a_row.addStretch()
         layout.addLayout(a_row)
+
+        # Restrict buttons based on role
+        user = auth.get_current_user()
+        if user and user.get("role") != "cashier":
+            self.add_btn.hide()
+            self.edit_btn.hide()
+            self.paid_btn.hide()
 
     def load_data(self):
         search = self.search_box.text().strip()

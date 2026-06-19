@@ -10,7 +10,6 @@ from PyQt6.QtCore import Qt, QDate
 from PyQt6.QtGui import QFont, QColor
 
 import database.dao as dao
-from ui.smart_inventory_tab import SmartInventoryWidget
 
 MEDICINE_CATEGORIES = [
     "Kháng sinh", "Giảm đau / Hạ sốt", "Tim mạch", "Tiêu hóa",
@@ -423,10 +422,7 @@ class MedicineTab(QWidget):
         pl.addWidget(self.presc_table)
         tabs.addTab(presc_widget, "📋 Đơn thuốc")
         
-        # ── Sub-tab 3: Smart Inventory (AI) ──────────────────────────────
-        if role != "doctor":
-            self.smart_inv_widget = SmartInventoryWidget()
-            tabs.addTab(self.smart_inv_widget, "🤖 Quản lý Kho Thông minh (AI)")
+
 
         layout.addWidget(tabs)
 
@@ -456,8 +452,7 @@ class MedicineTab(QWidget):
                         item.setForeground(QColor("#c53030"))
                     self.med_table.setItem(r, c, item)
             self.med_count_lbl.setText(f"Tổng: {len(rows)} loại thuốc")
-        if hasattr(self, "smart_inv_widget"):
-            self.smart_inv_widget.load_data()
+
 
 
         # Load prescriptions

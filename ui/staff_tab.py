@@ -1,4 +1,4 @@
-﻿from PyQt6.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
     QComboBox, QDialog, QFormLayout, QTextEdit, QMessageBox,
@@ -33,9 +33,10 @@ class StaffFormDialog(QDialog):
         self.staff_data = staff_data
         self.is_edit = staff_data is not None
         self.departments = dao.get_departments()
-        self.setWindowTitle("Sửa nhân viên" if self.is_edit else "Thêm nhân viên mới")
         self.setMinimumWidth(520)
         self.setModal(True)
+        self.user = auth.get_current_user()
+        self.staff_profile = dao.get_staff_profile(self.user["id"]) if self.user else None
         self._build_ui()
         if self.is_edit:
             self._fill_form()
@@ -97,10 +98,19 @@ class StaffFormDialog(QDialog):
         form.addRow("Lương cơ bản:", self.f_salary)
         form.addRow("Thưởng:",        self.f_bonus)
         form.addRow("Lịch làm việc:", self.f_schedule)
-        form.addRow("Ghi chú:",       self.f_notes)
-
         scroll.setWidget(form_widget)
         layout.addWidget(scroll)
+
+        if self.user and self.user["role"] == "department_head":
+            self.f_position.setCurrentText("Bác sĩ")
+            self.f_position.setEnabled(False)
+            if self.staff_profile and self.staff_profile["department_id"]:
+                dept_id = self.staff_profile["department_id"]
+                for i in range(self.f_dept.count()):
+                    if self.f_dept.itemData(i) == dept_id:
+                        self.f_dept.setCurrentIndex(i)
+                        break
+                self.f_dept.setEnabled(False)
 
         btn_row = QHBoxLayout(); btn_row.addStretch()
         self.cancel_btn = QPushButton("Huỷ"); self.cancel_btn.setObjectName("cancelBtn")
@@ -193,9 +203,10 @@ class StaffFormDialog(QDialog):
 # ═══════════════════════════════════════════════════════════
 #  Main Staff Tab
 # ═══════════════════════════════════════════════════════════
-class StaffTab(QWidget):
     def __init__(self):
         super().__init__()
+        self.user = auth.get_current_user()
+        self.staff_profile = dao.get_staff_profile(self.user["id"]) if self.user else None
         self._build_ui()
         self._apply_style()
         self.load_data()
@@ -207,7 +218,9 @@ class StaffTab(QWidget):
 
         # Header
         header_row = QHBoxLayout()
-        title = QLabel("👨‍⚕️ Quản lý nhân viên")
+        is_dept_head = self.user and self.user["role"] == "department_head"
+        title_text = "👨‍⚕️ Quản lý bác sĩ" if is_dept_head else "👨‍⚕️ Quản lý nhân viên"
+        title = QLabel(title_text)
         title.setFont(QFont("Segoe UI", 14, QFont.Weight.Bold))
         title.setObjectName("sectionTitle")
         header_row.addWidget(title)
@@ -236,8 +249,9 @@ class StaffTab(QWidget):
         self.dept_cb.currentIndexChanged.connect(self.load_data)
 
         filter_row.addWidget(self.search_box, 3)
-        filter_row.addWidget(self.pos_cb)
-        filter_row.addWidget(self.dept_cb)
+        if not is_dept_head:
+            filter_row.addWidget(self.pos_cb)
+            filter_row.addWidget(self.dept_cb)
         layout.addLayout(filter_row)
 
         self.count_lbl = QLabel(); self.count_lbl.setObjectName("countLabel")
@@ -272,6 +286,12 @@ class StaffTab(QWidget):
         position = self.pos_cb.currentText()
         dept_id  = self.dept_cb.currentData()
         if position == "Tất cả vị trí": position = ""
+
+        is_dept_head = self.user and self.user["role"] == "department_head"
+        if is_dept_head:
+            position = "Bác sĩ"
+            if self.staff_profile and self.staff_profile["department_id"]:
+                dept_id = self.staff_profile["department_id"]
 
         rows = dao.get_all_staff(search, position, dept_id)
         self.table.setRowCount(len(rows))

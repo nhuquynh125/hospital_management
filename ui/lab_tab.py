@@ -251,6 +251,9 @@ class LabTab(QWidget):
         if user and user.get("role") == "doctor":
             self.result_btn.hide()
             self.edit_btn.hide()
+        elif user and user.get("role") == "lab_technician":
+            self.add_btn.hide()
+            self.edit_btn.hide()
 
     def load_data(self):
         search = self.search_box.text().strip()

@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (
     QComboBox, QDialog, QFormLayout, QTextEdit, QMessageBox,
     QDateTimeEdit, QFrame
 )
-from PyQt6.QtCore import Qt, QDateTime
+from PyQt6.QtCore import Qt, QDateTime, QTimer
 from PyQt6.QtGui import QFont, QColor
 
 import database.dao as dao
@@ -193,6 +193,10 @@ class MedicalOrderTab(QWidget):
         self._build_ui()
         self._apply_style()
         self.load_data()
+        
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.load_data)
+        self.timer.start(5000)
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
@@ -243,19 +247,33 @@ class MedicalOrderTab(QWidget):
         layout.addWidget(self.table)
 
         action_row = QHBoxLayout()
-        btn_specs = [
-            ("✏️ Sửa", "actionBtn", self._edit_order),
-            ("🔄 Thay đổi trạng thái", "successBtn", self._change_status),
-        ]
-        for label, obj, handler in btn_specs:
-            btn = QPushButton(label)
-            btn.setObjectName(obj)
-            btn.clicked.connect(handler)
-            action_row.addWidget(btn)
+        
+        self.edit_btn = QPushButton("✏️ Sửa")
+        self.edit_btn.setObjectName("actionBtn")
+        self.edit_btn.clicked.connect(self._edit_order)
+        action_row.addWidget(self.edit_btn)
+
+        self.change_status_btn = QPushButton("🔄 Thay đổi trạng thái")
+        self.change_status_btn.setObjectName("successBtn")
+        self.change_status_btn.clicked.connect(self._change_status)
+        action_row.addWidget(self.change_status_btn)
+
         action_row.addStretch()
         layout.addLayout(action_row)
+        
+        user = auth.get_current_user()
+        if user and user.get("role") == "nurse":
+            self.add_btn.hide()
+            self.edit_btn.hide()
+
+    def _selected_id_silent(self):
+        row = self.table.currentRow()
+        if row < 0:
+            return None
+        return self.table.item(row, 0).data(Qt.ItemDataRole.UserRole.value)
 
     def load_data(self):
+        selected_id = self._selected_id_silent()
         search = self.search_box.text().strip()
         status = self.status_cb.currentText()
         if status == "Tất cả": status = ""
@@ -277,6 +295,12 @@ class MedicalOrderTab(QWidget):
                     item.setForeground(QColor(fg))
                 self.table.setItem(r, c, item)
         self.count_lbl.setText(f"Tìm thấy {len(rows)} y lệnh")
+        
+        if selected_id:
+            for r in range(self.table.rowCount()):
+                if self.table.item(r, 0).data(Qt.ItemDataRole.UserRole.value) == selected_id:
+                    self.table.selectRow(r)
+                    break
 
     def _selected_id(self):
         row = self.table.currentRow()

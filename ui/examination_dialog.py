@@ -10,7 +10,7 @@ from PyQt6.QtWidgets import (
     QSpinBox, QDoubleSpinBox, QCheckBox, QScrollArea, QSizePolicy, QSplitter,
     QGroupBox, QGridLayout
 )
-from PyQt6.QtCore import Qt, QDate
+from PyQt6.QtCore import Qt, QDate, QTimer
 from PyQt6.QtGui import QFont, QColor, QTextDocument
 from PyQt6.QtPrintSupport import QPrinter, QPrintDialog
 import database.dao as dao
@@ -218,6 +218,21 @@ class ExamTab(QWidget):
         form.addRow("📝 Ghi chú:",        self.f_notes)
 
         layout.addLayout(form)
+        self._prefill_vital_signs()
+
+    def _prefill_vital_signs(self):
+        note = dao.get_latest_nursing_note_for_patient_today(self.patient["id"])
+        if note and note["vital_signs"]:
+            try:
+                vs = json.loads(note["vital_signs"])
+                if "height" in vs and vs["height"] > 0: self.f_height.setValue(vs["height"])
+                if "weight" in vs and vs["weight"] > 0: self.f_weight.setValue(vs["weight"])
+                if "bp" in vs and vs["bp"]: self.f_bp.setText(vs["bp"])
+                if "pulse" in vs and vs["pulse"] > 0: self.f_heart_rate.setValue(vs["pulse"])
+                if "temp" in vs and vs["temp"] > 0: self.f_temp.setValue(vs["temp"])
+                if "spo2" in vs and vs["spo2"] > 0: self.f_spo2.setValue(vs["spo2"])
+            except Exception:
+                pass
 
     def get_data(self):
         return {
@@ -320,6 +335,13 @@ class LabOrderTab(QWidget):
         form.addRow("Ghi chú:",        self.f_lab_notes)
         layout.addLayout(form)
 
+        # Send orders button
+        btn_send = QPushButton("📤 Gửi chỉ định xuống Khoa Xét nghiệm")
+        btn_send.setObjectName("primaryBtn")
+        btn_send.setStyleSheet("background:#2b6cb0; color:white; padding:8px; border-radius:6px; font-weight:bold;")
+        btn_send.clicked.connect(self._send_orders)
+        layout.addWidget(btn_send)
+
     def _add_custom(self):
         text = self.custom_input.text().strip()
         if text:
@@ -341,6 +363,115 @@ class LabOrderTab(QWidget):
             "priority": self.f_priority.currentText(),
             "notes":    self.f_lab_notes.text().strip(),
         }
+
+    def _send_orders(self):
+        orders = self.get_orders()
+        if not orders["tests"]:
+            QMessageBox.warning(self, "Trống", "Vui lòng chọn ít nhất một xét nghiệm.")
+            return
+
+        user = auth.get_current_user()
+        doc_staff_id = dao.get_staff_id_by_user_id(user["id"]) if user else None
+
+        for test_type in orders["tests"]:
+            dao.add_lab_test({
+                "patient_id":   self.patient["id"],
+                "doctor_id":    doc_staff_id,
+                "test_type":    test_type,
+                "ordered_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "status":       "Chờ",
+                "notes":        f"[{orders['priority']}] {orders['notes']}",
+            })
+
+        QMessageBox.information(self, "Thành công", f"Đã gửi {len(orders['tests'])} chỉ định xét nghiệm.")
+        for cb in self._checkboxes.values():
+            cb.setChecked(False)
+        self.lab_orders.clear()
+        if hasattr(self, 'custom_input'):
+            self.custom_input.clear()
+        self._update_list()
+
+
+# ═══════════════════════════════════════════════════════════
+#  Tab Kết quả
+# ═══════════════════════════════════════════════════════════
+class ResultTab(QWidget):
+    def __init__(self, patient, exam_tab):
+        super().__init__()
+        self.patient = patient
+        self.exam_tab = exam_tab
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(16, 14, 16, 14)
+        layout.setSpacing(10)
+
+        group_nurse = QGroupBox("Dữ liệu của Y tá (Chỉ số sinh tồn)")
+        gn_layout = QVBoxLayout(group_nurse)
+        self.f_nurse_data = QTextEdit()
+        self.f_nurse_data.setReadOnly(True)
+        self.f_nurse_data.setMaximumHeight(50)
+        gn_layout.addWidget(self.f_nurse_data)
+        layout.addWidget(group_nurse)
+
+        group_lab = QGroupBox("Kết quả xét nghiệm")
+        gl_layout = QVBoxLayout(group_lab)
+        self.f_lab_results = QTextEdit()
+        self.f_lab_results.setReadOnly(True)
+        gl_layout.addWidget(self.f_lab_results)
+        btn_refresh = QPushButton("🔄 Làm mới kết quả XN")
+        btn_refresh.clicked.connect(self.refresh_data)
+        gl_layout.addWidget(btn_refresh)
+        layout.addWidget(group_lab)
+
+        group_doc = QGroupBox("Chẩn đoán và Kết luận")
+        gd_layout = QVBoxLayout(group_doc)
+        self.f_doc_diag = QTextEdit()
+        self.f_doc_diag.setReadOnly(True)
+        self.f_doc_diag.setMaximumHeight(50)
+        self.f_doc_concl = QTextEdit()
+        self.f_doc_concl.setReadOnly(True)
+        self.f_doc_concl.setMaximumHeight(50)
+        gd_layout.addWidget(QLabel("Chẩn đoán:"))
+        gd_layout.addWidget(self.f_doc_diag)
+        gd_layout.addWidget(QLabel("Kết luận cuối cùng:"))
+        gd_layout.addWidget(self.f_doc_concl)
+        layout.addWidget(group_doc)
+
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.refresh_data)
+        self.timer.start(5000)
+
+        self.refresh_data()
+
+    def refresh_data(self):
+        note = dao.get_latest_nursing_note_for_patient_today(self.patient["id"])
+        if note and note["vital_signs"]:
+            try:
+                vs = json.loads(note["vital_signs"])
+                text = f"Chiều cao: {vs.get('height', '—')} cm | Cân nặng: {vs.get('weight', '—')} kg | Huyết áp: {vs.get('bp', '—')} | Nhịp tim: {vs.get('pulse', '—')} | Nhiệt độ: {vs.get('temp', '—')} °C | SpO2: {vs.get('spo2', '—')} %"
+                self.f_nurse_data.setText(text)
+            except:
+                self.f_nurse_data.setText("Không có dữ liệu sinh tồn hợp lệ trong ngày.")
+        else:
+            self.f_nurse_data.setText("Chưa có ghi chú chăm sóc trong ngày.")
+
+        tests = dao.get_all_lab_tests(self.patient["patient_code"], "")
+        today = datetime.now().strftime("%Y-%m-%d")
+        today_tests = [t for t in tests if t["ordered_date"] and t["ordered_date"].startswith(today)]
+        if not today_tests:
+            self.f_lab_results.setText("Không có xét nghiệm nào được chỉ định trong ngày hôm nay.")
+        else:
+            res_text = ""
+            for t in today_tests:
+                res_text += f"[{t['ordered_date'][11:16]}] {t['test_type']} - Trạng thái: {t['status']}\n"
+                if t["result"]:
+                    res_text += f"Kết quả:\n{t['result']}\n"
+                res_text += "-"*40 + "\n"
+            self.f_lab_results.setText(res_text)
+
+        diag = self.exam_tab.f_diagnosis.toPlainText()
+        self.f_doc_diag.setText(diag if diag else "Chưa nhập chẩn đoán.")
+        concl = self.exam_tab.f_conclusion.toPlainText()
+        self.f_doc_concl.setText(concl if concl else "Chưa nhập kết luận.")
 
 
 # ═══════════════════════════════════════════════════════════
@@ -929,11 +1060,13 @@ class ExaminationDialog(QDialog):
 
         self.exam_tab = ExamTab(self.patient)
         self.lab_tab  = LabOrderTab(self.patient)
+        self.result_tab = ResultTab(self.patient, self.exam_tab)
         self.rx_tab   = PrescriptionTab(self.patient)
 
         self.tabs.addTab(self.exam_tab, "1️⃣  Khám & Chẩn đoán")
         self.tabs.addTab(self.lab_tab,  "2️⃣  Chỉ định Xét nghiệm")
-        self.tabs.addTab(self.rx_tab,   "3️⃣  Kê đơn thuốc")
+        self.tabs.addTab(self.result_tab, "3️⃣  Kết quả")
+        self.tabs.addTab(self.rx_tab,   "4️⃣  Kê đơn thuốc")
 
         rl.addWidget(self.tabs)
 
@@ -986,6 +1119,8 @@ class ExaminationDialog(QDialog):
             self.tabs.setCurrentIndex(idx + 1)
 
     def _on_tab_change(self, idx):
+        if idx == 2:
+            self.result_tab.refresh_data()
         self.prev_btn.setEnabled(idx > 0)
         is_last = idx == self.tabs.count() - 1
         self.next_btn.setVisible(not is_last)

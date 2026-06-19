@@ -319,7 +319,7 @@ def get_doctors():
     conn = get_connection()
     rows = conn.execute("""
         SELECT id, full_name, specialization FROM staff
-        WHERE position='Bác sĩ' AND is_active=1 ORDER BY full_name
+        WHERE position IN ('Bác sĩ', 'Giám đốc', 'Trưởng khoa') AND is_active=1 ORDER BY full_name
     """).fetchall()
     conn.close()
     return rows
@@ -847,6 +847,18 @@ def get_revenue_by_time(filter_type="month", month=None, year=None, week_str=Non
 # ═══════════════════════════════════════════════════════════
 #  NURSING NOTES
 # ═══════════════════════════════════════════════════════════
+def get_latest_nursing_note_for_patient_today(patient_id: int):
+    conn = get_connection()
+    from datetime import datetime
+    today = datetime.now().strftime("%Y-%m-%d")
+    row = conn.execute("""
+        SELECT * FROM nursing_notes 
+        WHERE patient_id=? AND date(note_date)=? 
+        ORDER BY note_date DESC LIMIT 1
+    """, (patient_id, today)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
 def get_nursing_notes(search="", status_filter=""):
     conn = get_connection()
     query = """

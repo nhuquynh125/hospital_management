@@ -47,6 +47,13 @@ class NursingNoteDialog(QDialog):
         for p in self.patients:
             self.f_patient.addItem(f"{p['patient_code']} — {p['full_name']}", p["id"])
 
+        # Doctor
+        self.f_doctor = QComboBox()
+        self.f_doctor.addItem("-- Chọn Bác sĩ (tuỳ chọn) --", None)
+        self.doctors = dao.get_doctors()
+        for d in self.doctors:
+            self.f_doctor.addItem(f"{d['full_name']}", d["id"])
+
         # Date/time
         self.f_datetime = QDateTimeEdit()
         self.f_datetime.setCalendarPopup(True)
@@ -59,6 +66,8 @@ class NursingNoteDialog(QDialog):
         vl = QFormLayout(vital_group)
         vl.setSpacing(8)
 
+        self.f_height = QDoubleSpinBox(); self.f_height.setRange(0, 300); self.f_height.setSuffix(" cm")
+        self.f_weight = QDoubleSpinBox(); self.f_weight.setRange(0, 300); self.f_weight.setSuffix(" kg")
         self.f_temp   = QDoubleSpinBox(); self.f_temp.setRange(34, 42); self.f_temp.setValue(37.0)
         self.f_temp.setSingleStep(0.1); self.f_temp.setSuffix(" °C")
         self.f_bp     = QLineEdit(); self.f_bp.setPlaceholderText("VD: 120/80")
@@ -69,6 +78,8 @@ class NursingNoteDialog(QDialog):
         self.f_resp   = QSpinBox(); self.f_resp.setRange(8,40); self.f_resp.setValue(18)
         self.f_resp.setSuffix(" lần/phút")
 
+        vl.addRow("Chiều cao:",         self.f_height)
+        vl.addRow("Cân nặng:",          self.f_weight)
         vl.addRow("Nhiệt độ:",          self.f_temp)
         vl.addRow("Huyết áp:",          self.f_bp)
         vl.addRow("Mạch:",              self.f_pulse)
@@ -84,6 +95,7 @@ class NursingNoteDialog(QDialog):
         self.f_notes.setPlaceholderText("Ghi chú thêm...")
 
         form.addRow("Bệnh nhân *:", self.f_patient)
+        form.addRow("Bác sĩ khám:", self.f_doctor)
         form.addRow("Thời gian:",   self.f_datetime)
         layout.addLayout(form)
         layout.addWidget(vital_group)
@@ -113,6 +125,8 @@ class NursingNoteDialog(QDialog):
             if dt.isValid(): self.f_datetime.setDateTime(dt)
         try:
             vs = json.loads(n["vital_signs"] or "{}")
+            self.f_height.setValue(vs.get("height", 0.0))
+            self.f_weight.setValue(vs.get("weight", 0.0))
             self.f_temp.setValue(vs.get("temp", 37.0))
             self.f_bp.setText(vs.get("bp",""))
             self.f_pulse.setValue(vs.get("pulse", 72))
@@ -131,6 +145,8 @@ class NursingNoteDialog(QDialog):
             QMessageBox.warning(self, "Thiếu thông tin", "Vui lòng chọn bệnh nhân.")
             return
         vital_signs = json.dumps({
+            "height": self.f_height.value(),
+            "weight": self.f_weight.value(),
             "temp":  self.f_temp.value(),
             "bp":    self.f_bp.text().strip(),
             "pulse": self.f_pulse.value(),
@@ -141,6 +157,7 @@ class NursingNoteDialog(QDialog):
         nurse_staff_id = dao.get_staff_id_by_user_id(user["id"]) if user else None
         self.result_data = {
             "patient_id":     patient_id,
+            "doctor_id":      self.f_doctor.currentData(),
             "nurse_id":       nurse_staff_id,
             "note_date":      self.f_datetime.dateTime().toString("yyyy-MM-dd HH:mm:ss"),
             "vital_signs":    vital_signs,
@@ -265,6 +282,32 @@ class NursingTab(QWidget):
         dlg = NursingNoteDialog(self)
         if dlg.exec() == QDialog.DialogCode.Accepted:
             dao.add_nursing_note(dlg.result_data)
+            
+            # Auto-create or update appointment if doctor is selected
+            doc_id = dlg.result_data.get("doctor_id")
+            if doc_id:
+                today = QDateTime.currentDateTime().toString("yyyy-MM-dd")
+                appts = dao.get_all_appointments(date_filter=today)
+                patient_id = dlg.result_data["patient_id"]
+                # Find if patient already has an appointment with status 'Chờ' or 'Đang khám'
+                existing = [a for a in appts if a["patient_id"] == patient_id and a["status"] in ("Chờ", "Đang khám")]
+                if not existing:
+                    # Create new appointment for the doctor
+                    dao.add_appointment({
+                        "patient_id": patient_id,
+                        "doctor_id": doc_id,
+                        "appointment_date": today,
+                        "appointment_time": QDateTime.currentDateTime().toString("HH:mm"),
+                        "reason": "Chuyển từ y tá sau khi đo sinh hiệu",
+                        "status": "Chờ",
+                        "notes": "Tự động tạo từ ghi chú chăm sóc"
+                    })
+                else:
+                    # If appointment exists but has different doctor, update doctor and ensure status is 'Chờ'
+                    appt = existing[0]
+                    if appt["status"] != "Đang khám":
+                        dao.update_appointment_status(appt["id"], "Chờ")
+            
             self.load_data()
 
     def _edit_note(self):

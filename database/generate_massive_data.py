@@ -131,10 +131,18 @@ def generate_data():
                 if accountants:
                     a_id = random.choice(accountants)
                     total = random.randint(100, 1000) * 1000
+                    status = random.choice(["Chưa thanh toán", "1 phần", "Đã thanh toán"])
+                    if status == "Chưa thanh toán":
+                        paid = 0
+                    elif status == "1 phần":
+                        paid = total // 2
+                    else:
+                        paid = total
+                    
                     cur.execute("""
                         INSERT INTO bills (patient_id, accountant_id, bill_date, total_amount, paid_amount, payment_method, status)
                         VALUES (?,?,?,?,?,?,?)
-                    """, (p_id, a_id, f"{date_str} 17:00", total, total, random.choice(["Tiền mặt", "Chuyển khoản", "Thẻ"]), "Đã thanh toán"))
+                    """, (p_id, a_id, f"{date_str} 17:00", total, paid, random.choice(["Tiền mặt", "Chuyển khoản", "Thẻ"]), status))
                     bill_id = cur.lastrowid
                     
                     cur.execute("INSERT INTO bill_items (bill_id, item_type, description, quantity, unit_price, total) VALUES (?,?,?,?,?,?)",
@@ -155,7 +163,10 @@ def generate_data():
 
     conn.commit()
     conn.close()
-    print("✅ Đã tạo thành công dữ liệu khổng lồ (tháng 4, 5, 6 năm 2026).")
+    try:
+        print("✅ Đã tạo thành công dữ liệu khổng lồ (tháng 4, 5, 6 năm 2026).")
+    except UnicodeEncodeError:
+        print("[DB] Data generated successfully.")
 
 
 if __name__ == "__main__":

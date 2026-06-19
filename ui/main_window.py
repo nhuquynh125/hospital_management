@@ -15,9 +15,7 @@ from ui.medical_order_tab import MedicalOrderTab
 from ui.lab_tab           import LabTab
 from ui.billing_tab       import BillingTab
 
-from ui.executive_report_tab import ExecutiveReportTab
 # FraudDetectionTab removed — was imported but never added to nav_items (dead code)
-from ui.predictive_analytics_tab import PredictiveAnalyticsTab
 from ui.settings_tab      import SettingsTab
 from ui.audit_log_tab     import AuditLogTab
 from ui.shift_schedule_tab import ShiftScheduleTab
@@ -79,17 +77,17 @@ class MainWindow(QMainWindow):
 
         # ── Navigation items: (icon, label, module, factory) ──────
         # module controls visibility per role
+        nhan_vien_label = "Bác sĩ" if role_key == "department_head" else "Nhân viên"
         nav_items = [
             ("👥","Bệnh nhân",          "patients",        lambda: PatientTab()),
-            ("👨‍⚕️","Nhân viên",        "staff",           lambda: StaffTab()),
+            ("👨‍⚕️",nhan_vien_label,    "staff",           lambda: StaffTab()),
             ("📋","Y lệnh",            "medical_orders",  lambda: MedicalOrderTab()),
             ("🗓️","Lịch hẹn",          "appointments",    lambda: AppointmentTab()),
             ("🩺","Chăm sóc ĐD",       "medical_records", lambda: NursingTab()),
             ("💊","Thuốc & Kê đơn",    "medicines",       lambda: MedicineTab()),
             ("🔬","Xét nghiệm",        "lab",             lambda: LabTab()),
             ("💰","Viện phí",           "billing",         lambda: BillingTab()),
-            ("📋","Báo cáo Điều hành",  "reports",         lambda: ExecutiveReportTab()),
-            ("🔮","Dự báo Lượng bệnh",  "reports",         lambda: PredictiveAnalyticsTab()),
+
 
             ("🛡️","Audit Trail",       "audit_logs",      lambda: AuditLogTab()),
         ]
@@ -98,6 +96,15 @@ class MainWindow(QMainWindow):
         if role_key not in excluded_shifts_roles:
             nav_items.insert(2, ("📅", "Lịch trực", None, lambda: ShiftScheduleTab()))
 
+        from ui.leave_management_tab import LeaveManagementTab
+        
+        nhan_vien_idx = next((i for i, item in enumerate(nav_items) if item[1] == nhan_vien_label), -1)
+        if nhan_vien_idx != -1:
+            nav_items.insert(nhan_vien_idx + 1, ("🏖️", "Nghỉ phép", None, lambda: LeaveManagementTab()))
+        else:
+            # If "Nhân viên" is not present, add "Nghỉ phép" before "Cài đặt"
+            nav_items.append(("🏖️", "Nghỉ phép", None, lambda: LeaveManagementTab()))
+
         if role_key == "nurse":
             nav_items = [item for item in nav_items if item[1] != "Lịch hẹn"]
             y_lenh_idx = next((i for i, item in enumerate(nav_items) if item[1] == "Y lệnh"), -1)
@@ -105,20 +112,25 @@ class MainWindow(QMainWindow):
                 y_lenh_item = nav_items.pop(y_lenh_idx)
                 nav_items.insert(0, y_lenh_item)
 
-        if role_key == "doctor":
+        if role_key == "receptionist":
+            nav_items = [item for item in nav_items if item[1] != "Lịch hẹn"]
+
+        if role_key in ("doctor", "department_head"):
             lich_hen_idx = next((i for i, item in enumerate(nav_items) if item[1] == "Lịch hẹn"), -1)
             if lich_hen_idx != -1:
                 lich_hen_item = nav_items.pop(lich_hen_idx)
                 nav_items.insert(0, lich_hen_item)
             
-            # Xoá mục "Thuốc & Kê đơn" đối với bác sĩ
+            # Xoá mục "Thuốc & Kê đơn" đối với bác sĩ và trưởng khoa
             nav_items = [item for item in nav_items if item[1] != "Thuốc & Kê đơn"]
+
+        # Restricted access to Viện phí
+        if role_key not in ("accountant", "cashier", "director"):
+            nav_items = [item for item in nav_items if item[1] != "Viện phí"]
 
         # Mọi tài khoản đều có thể vào Cài đặt để đổi mật khẩu
         nav_items.append(("⚙️","Cài đặt / Backup",None,lambda: SettingsTab()))
 
-        if role_key != "director":
-            nav_items = [item for item in nav_items if item[1] not in ("Báo cáo Điều hành", "Dự báo Lượng bệnh")]
 
         self._stack = QStackedWidget()
         for icon, label, module, factory in nav_items:

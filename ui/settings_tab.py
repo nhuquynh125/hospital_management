@@ -218,7 +218,6 @@ class _LeaveManagementWidget(_scroll):
         user  = auth.get_current_user() or {}
         staff_row = dao.get_staff_profile(user.get("id"))
         self._staff = dict(staff_row) if staff_row else {}
-        self._is_hr = _can("settings.salary_config") # HR can approve/reject
 
         title = QLabel("\U0001f3d6\ufe0f  Qu\u1ea3n l\xfd ngh\u1ec9 ph\xe9p")
         title.setFont(QFont("Segoe UI", 13, QFont.Weight.Bold))
@@ -247,10 +246,10 @@ class _LeaveManagementWidget(_scroll):
         self.lay.addWidget(req_grp)
 
         # ── History ──
-        hist_grp = QGroupBox("L\u1ecbch s\u1eed & Duy\u1ec7t \u0111\u01a1n" if self._is_hr else "L\u1ecbch s\u1eed \u0111\u01a1n"); hist_grp.setObjectName("groupBox")
+        hist_grp = QGroupBox("L\u1ecbch s\u1eed \u0111\u01a1n"); hist_grp.setObjectName("groupBox")
         hl = QVBoxLayout(hist_grp)
         self.table = QTableWidget()
-        cols = ["T\xean NV", "Lo\u1ea1i", "T\u1eeb", "\u0110\u1ebfn", "L\xfd do", "Tr\u1ea1ng th\xe1i"] if self._is_hr else ["Lo\u1ea1i", "T\u1eeb", "\u0110\u1ebfn", "L\xfd do", "Tr\u1ea1ng th\xe1i"]
+        cols = ["Lo\u1ea1i", "T\u1eeb", "\u0110\u1ebfn", "L\xfd do", "Tr\u1ea1ng th\xe1i"]
         self.table.setColumnCount(len(cols))
         self.table.setHorizontalHeaderLabels(cols)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -260,14 +259,6 @@ class _LeaveManagementWidget(_scroll):
         self.table.verticalHeader().setVisible(False)
         hl.addWidget(self.table)
         
-        if self._is_hr:
-            hr_btns = QHBoxLayout()
-            btn_appr = QPushButton("\u2705 Duy\u1ec7t"); btn_appr.setObjectName("primaryBtn"); btn_appr.clicked.connect(lambda: self._set_status("Đã duyệt"))
-            btn_rej = QPushButton("\u274c T\u1eeb ch\u1ed1i"); btn_rej.setObjectName("primaryBtn"); btn_rej.setStyleSheet("background:#c53030;")
-            btn_rej.clicked.connect(lambda: self._set_status("Từ chối"))
-            hr_btns.addWidget(btn_appr); hr_btns.addWidget(btn_rej); hr_btns.addStretch()
-            hl.addLayout(hr_btns)
-
         self.lay.addWidget(hist_grp)
         self.lay.addStretch()
         self._load_history()
@@ -287,24 +278,17 @@ class _LeaveManagementWidget(_scroll):
         self._load_history()
 
     def _load_history(self):
-        reqs = dao.get_all_leave_requests() if self._is_hr else dao.get_leave_requests_for_staff(self._staff.get("id", 0))
+        reqs = dao.get_leave_requests_for_staff(self._staff.get("id", 0))
         self.table.setRowCount(len(reqs))
         for r, d in enumerate(reqs):
-            vals = [d["staff_name"], d["leave_type"], d["start_date"], d["end_date"], d["reason"], d["status"]] if self._is_hr else [d["leave_type"], d["start_date"], d["end_date"], d["reason"], d["status"]]
+            vals = [d["leave_type"], d["start_date"], d["end_date"], d["reason"], d["status"]]
             for c, v in enumerate(vals):
                 it = QTableWidgetItem(str(v))
-                if c == (5 if self._is_hr else 4):
+                if c == 4:
                     if v == 'Đã duyệt': it.setForeground(Qt.GlobalColor.darkGreen)
                     elif v == 'Từ chối': it.setForeground(Qt.GlobalColor.darkRed)
                 it.setData(Qt.ItemDataRole.UserRole, d["id"])
                 self.table.setItem(r, c, it)
-                
-    def _set_status(self, stat):
-        row = self.table.currentRow()
-        if row < 0: return
-        req_id = self.table.item(row, 0).data(Qt.ItemDataRole.UserRole)
-        dao.update_leave_request_status(req_id, stat)
-        self._load_history()
 
 
 class _PayslipViewerWidget(_scroll):

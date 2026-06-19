@@ -253,7 +253,7 @@ def init_db():
         insurance_cover REAL DEFAULT 0,
         payment_method  TEXT CHECK(payment_method IN ('Tiền mặt','Chuyển khoản','BHYT','Thẻ')),
         status          TEXT DEFAULT 'Chưa thanh toán'
-                        CHECK(status IN ('Chưa thanh toán','Đã thanh toán','Một phần','Huỷ')),
+                        CHECK(status IN ('Chưa thanh toán','Đã thanh toán','1 phần')),
         notes           TEXT
     )""")
 
@@ -382,7 +382,14 @@ def _migrate_db(conn, cur):
             perm_id = cur.fetchone()
             if perm_id:
                 cur.execute("INSERT OR IGNORE INTO role_permissions (role_id, permission_id) VALUES (?, ?)", (role_id, perm_id[0]))
-                conn.commit()
+                
+            # Grant doctor permissions to director
+            for p_name in ["medical_records", "medicines", "lab"]:
+                cur.execute("SELECT id FROM permissions WHERE permission_name=?", (p_name,))
+                p_id = cur.fetchone()
+                if p_id:
+                    cur.execute("INSERT OR IGNORE INTO role_permissions (role_id, permission_id) VALUES (?, ?)", (role_id, p_id[0]))
+            conn.commit()
     except Exception as e:
         pass
 
@@ -440,11 +447,11 @@ def _seed_rbac(cur, conn):
         "admin": ["staff", "settings", "audit_logs", "billing"], # Billing just to see issues, no medical records
         "doctor": ["patients", "appointments", "medical_records", "medicines", "lab", "reports", "ai"],
         "nurse": ["patients", "appointments", "medical_records", "medical_orders", "reports", "ai"],
-        "receptionist": ["patients", "appointments", "billing", "reports"],
+        "receptionist": ["patients", "billing", "reports"],
         "pharmacist": ["medicines", "pharmacy", "reports", "ai"],
         "accountant": ["billing", "reports"],
         "lab_technician": ["lab", "reports", "ai"],
-        "director": ["patients", "staff", "appointments", "reports", "ai", "billing"],
+        "director": ["patients", "staff", "appointments", "medical_records", "medicines", "lab", "reports", "ai", "billing"],
         "cashier": ["billing"],
         "department_head": ["patients", "appointments", "medical_records", "medicines", "lab", "reports", "ai", "staff"],
         "hr_manager": ["staff",
