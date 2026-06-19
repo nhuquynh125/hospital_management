@@ -102,16 +102,19 @@ class LeaveManagementTab(QWidget):
 
     def _load_data(self):
         if self.role == "hr_manager":
-            reqs = dao.get_all_leave_requests()
+            raw_reqs = dao.get_all_leave_requests()
+            reqs = [dict(r) for r in raw_reqs]
         else:
             staff_row = dao.get_staff_profile(self.user.get("id"))
             if staff_row:
-                raw_reqs = dao.get_leave_requests_for_staff(staff_row["id"])
+                staff_dict = dict(staff_row)
+                raw_reqs = dao.get_leave_requests_for_staff(staff_dict["id"])
                 reqs = []
                 for r in raw_reqs:
-                    r["staff_name"] = staff_row["full_name"]
-                    r["position"] = staff_row.get("position", "")
-                    reqs.append(r)
+                    d = dict(r)
+                    d["staff_name"] = staff_dict.get("full_name", "")
+                    d["position"] = staff_dict.get("position", "")
+                    reqs.append(d)
             else:
                 reqs = []
                 

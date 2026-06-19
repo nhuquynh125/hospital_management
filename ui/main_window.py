@@ -96,14 +96,13 @@ class MainWindow(QMainWindow):
         if role_key not in excluded_shifts_roles:
             nav_items.insert(2, ("📅", "Lịch trực", None, lambda: ShiftScheduleTab()))
 
-        from ui.leave_management_tab import LeaveManagementTab
-        
-        nhan_vien_idx = next((i for i, item in enumerate(nav_items) if item[1] == nhan_vien_label), -1)
-        if nhan_vien_idx != -1:
-            nav_items.insert(nhan_vien_idx + 1, ("🏖️", "Nghỉ phép", None, lambda: LeaveManagementTab()))
-        else:
-            # If "Nhân viên" is not present, add "Nghỉ phép" before "Cài đặt"
-            nav_items.append(("🏖️", "Nghỉ phép", None, lambda: LeaveManagementTab()))
+        if role_key == "hr_manager":
+            from ui.leave_management_tab import LeaveManagementTab
+            nhan_vien_idx = next((i for i, item in enumerate(nav_items) if item[1] == nhan_vien_label), -1)
+            if nhan_vien_idx != -1:
+                nav_items.insert(nhan_vien_idx + 1, ("🏖️", "Nghỉ phép", None, lambda: LeaveManagementTab()))
+            else:
+                nav_items.append(("🏖️", "Nghỉ phép", None, lambda: LeaveManagementTab()))
 
         if role_key == "nurse":
             nav_items = [item for item in nav_items if item[1] != "Lịch hẹn"]
