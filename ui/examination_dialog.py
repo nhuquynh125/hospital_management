@@ -1,4 +1,5 @@
 import json
+import os
 from datetime import datetime
 
 from PyQt6.QtWidgets import (
@@ -6,7 +7,7 @@ from PyQt6.QtWidgets import (
     QPushButton, QTabWidget, QFrame, QFormLayout, QLineEdit,
     QTextEdit, QComboBox, QDateEdit, QTableWidget, QTableWidgetItem,
     QHeaderView, QAbstractItemView, QMessageBox, QListWidget, QListWidgetItem,
-    QSpinBox, QCheckBox, QScrollArea, QSizePolicy, QSplitter,
+    QSpinBox, QDoubleSpinBox, QCheckBox, QScrollArea, QSizePolicy, QSplitter,
     QGroupBox, QGridLayout
 )
 from PyQt6.QtCore import Qt, QDate
@@ -120,6 +121,29 @@ class ExamTab(QWidget):
         layout.setContentsMargins(16, 14, 16, 14)
         layout.setSpacing(10)
 
+        # ── Chỉ số sinh tồn ──────────────────────────────────────
+        vital_group = QGroupBox("📊 Chỉ số sinh tồn")
+        vital_group.setObjectName("vitalGroup")
+        vg = QGridLayout(vital_group)
+        vg.setSpacing(8)
+
+        self.f_height = QDoubleSpinBox(); self.f_height.setRange(0, 250); self.f_height.setSuffix(" cm")
+        self.f_weight = QDoubleSpinBox(); self.f_weight.setRange(0, 300); self.f_weight.setSuffix(" kg")
+        self.f_bp     = QLineEdit(); self.f_bp.setPlaceholderText("VD: 120/80")
+        self.f_heart_rate = QSpinBox(); self.f_heart_rate.setRange(0, 250); self.f_heart_rate.setSuffix(" lần/phút")
+        self.f_temp   = QDoubleSpinBox(); self.f_temp.setRange(34, 42); self.f_temp.setValue(37.0)
+        self.f_temp.setSingleStep(0.1); self.f_temp.setSuffix(" °C")
+        self.f_spo2   = QSpinBox(); self.f_spo2.setRange(0, 100); self.f_spo2.setSuffix(" %")
+
+        vg.addWidget(QLabel("Chiều cao:"), 0, 0); vg.addWidget(self.f_height, 0, 1)
+        vg.addWidget(QLabel("Cân nặng:"),  0, 2); vg.addWidget(self.f_weight, 0, 3)
+        vg.addWidget(QLabel("Huyết áp:"),  1, 0); vg.addWidget(self.f_bp, 1, 1)
+        vg.addWidget(QLabel("Nhịp tim:"),  1, 2); vg.addWidget(self.f_heart_rate, 1, 3)
+        vg.addWidget(QLabel("Nhiệt độ:"),  2, 0); vg.addWidget(self.f_temp, 2, 1)
+        vg.addWidget(QLabel("SpO2:"),      2, 2); vg.addWidget(self.f_spo2, 2, 3)
+
+        layout.addWidget(vital_group)
+
         form = QFormLayout()
         form.setSpacing(10)
         form.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
@@ -129,21 +153,41 @@ class ExamTab(QWidget):
             "Mô tả triệu chứng bệnh nhân khai báo...\n"
             "VD: Sốt 38.5°C, ho khan 3 ngày, đau họng, sổ mũi, mệt mỏi."
         )
-        self.f_symptoms.setMinimumHeight(90)
+        self.f_symptoms.setMinimumHeight(80)
+
+        # Tiền sử bệnh — tự gợi ý từ các chẩn đoán trước đó, bác sĩ có thể sửa
+        self.f_history = QTextEdit()
+        self.f_history.setMaximumHeight(60)
+        self.f_history.setPlaceholderText("Tiền sử bệnh, dị ứng, bệnh mạn tính,...")
+        try:
+            prior = dao.get_patient_medical_history(patient["id"])
+            diag_set = []
+            for h in prior:
+                d = h["diagnosis"]
+                if d and d not in diag_set:
+                    diag_set.append(d)
+            if diag_set:
+                self.f_history.setPlainText("; ".join(diag_set))
+        except Exception:
+            pass
 
         self.f_diagnosis = QTextEdit()
         self.f_diagnosis.setPlaceholderText(
             "Chẩn đoán sơ bộ / chính thức...\n"
             "VD: Viêm đường hô hấp trên cấp. ICD-10: J06.9"
         )
-        self.f_diagnosis.setMinimumHeight(80)
+        self.f_diagnosis.setMinimumHeight(70)
+
+        self.f_conclusion = QTextEdit()
+        self.f_conclusion.setMaximumHeight(65)
+        self.f_conclusion.setPlaceholderText("Kết luận chung về tình trạng bệnh nhân sau khi khám...")
 
         self.f_treatment = QTextEdit()
         self.f_treatment.setPlaceholderText(
             "Phác đồ điều trị...\n"
             "VD: Nghỉ ngơi, uống nhiều nước, dùng thuốc theo đơn."
         )
-        self.f_treatment.setMinimumHeight(80)
+        self.f_treatment.setMinimumHeight(70)
 
         self.f_followup = QDateEdit()
         self.f_followup.setCalendarPopup(True)
@@ -163,11 +207,13 @@ class ExamTab(QWidget):
 
         self.f_notes = QTextEdit()
         self.f_notes.setPlaceholderText("Ghi chú thêm cho lần khám này...")
-        self.f_notes.setMaximumHeight(60)
+        self.f_notes.setMaximumHeight(55)
 
-        form.addRow("🤒 Triệu chứng *:", self.f_symptoms)
-        form.addRow("🔍 Chẩn đoán *:",   self.f_diagnosis)
-        form.addRow("💊 Phác đồ ĐT:",    self.f_treatment)
+        form.addRow("🤒 Triệu chứng *:",  self.f_symptoms)
+        form.addRow("📜 Tiền sử bệnh:",   self.f_history)
+        form.addRow("🔍 Chẩn đoán *:",    self.f_diagnosis)
+        form.addRow("✅ Kết luận khám:",  self.f_conclusion)
+        form.addRow("💊 Phác đồ ĐT:",     self.f_treatment)
         form.addRow("📅 Tái khám:",       followup_row)
         form.addRow("📝 Ghi chú:",        self.f_notes)
 
@@ -175,12 +221,20 @@ class ExamTab(QWidget):
 
     def get_data(self):
         return {
-            "symptoms":      self.f_symptoms.toPlainText().strip(),
-            "diagnosis":     self.f_diagnosis.toPlainText().strip(),
-            "treatment_plan":self.f_treatment.toPlainText().strip(),
-            "follow_up_date":(self.f_followup.date().toString("yyyy-MM-dd")
-                              if self.f_need_followup.isChecked() else None),
-            "notes":         self.f_notes.toPlainText().strip(),
+            "symptoms":        self.f_symptoms.toPlainText().strip(),
+            "medical_history": self.f_history.toPlainText().strip(),
+            "diagnosis":       self.f_diagnosis.toPlainText().strip(),
+            "conclusion":      self.f_conclusion.toPlainText().strip(),
+            "treatment_plan":  self.f_treatment.toPlainText().strip(),
+            "follow_up_date":  (self.f_followup.date().toString("yyyy-MM-dd")
+                                if self.f_need_followup.isChecked() else None),
+            "notes":           self.f_notes.toPlainText().strip(),
+            "height":          self.f_height.value() or None,
+            "weight":          self.f_weight.value() or None,
+            "blood_pressure":  self.f_bp.text().strip() or None,
+            "heart_rate":      self.f_heart_rate.value() or None,
+            "temperature":     self.f_temp.value() or None,
+            "spo2":            self.f_spo2.value() or None,
         }
 
     def validate(self):
@@ -495,29 +549,35 @@ class PrescriptionTab(QWidget):
 #  Save Success & Print Dialog
 # ═══════════════════════════════════════════════════════════
 class SaveSuccessDialog(QDialog):
-    def __init__(self, summary, patient, exam_data, rx_data, doctor_name, parent=None):
+    def __init__(self, summary, patient, exam_data, rx_data, lab_data, doctor_name,
+                 department=None, room=None, record_id=None, presc_id=None, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Lưu thành công")
         self.setMinimumWidth(400)
-        self.patient = patient
-        self.exam_data = exam_data
-        self.rx_data = rx_data
+        self.patient     = patient
+        self.exam_data   = exam_data
+        self.rx_data     = rx_data
+        self.lab_data    = lab_data
         self.doctor_name = doctor_name
+        self.department  = department or "—"
+        self.room        = room or "—"
+        self.phieu_code  = f"PK{datetime.now().year}{(record_id or 0):04d}"
+        self.don_code    = f"DT{datetime.now().year}{(presc_id or 0):04d}" if presc_id else None
 
         layout = QVBoxLayout(self)
-        
+
         lbl = QLabel(summary)
         lbl.setWordWrap(True)
         lbl.setStyleSheet("font-size: 13px; color: #2d3748; padding: 10px;")
         layout.addWidget(lbl)
 
         btn_layout = QHBoxLayout()
-        
+
         self.btn_print_exam = QPushButton("🖨️ In phiếu khám bệnh")
         self.btn_print_exam.setStyleSheet("padding: 8px; background: #3182ce; color: white; border-radius: 4px;")
         self.btn_print_exam.clicked.connect(self._print_exam)
         btn_layout.addWidget(self.btn_print_exam)
-        
+
         self.btn_print_rx = QPushButton("🖨️ In đơn thuốc")
         self.btn_print_rx.setStyleSheet("padding: 8px; background: #3182ce; color: white; border-radius: 4px;")
         self.btn_print_rx.clicked.connect(self._print_rx)
@@ -525,177 +585,296 @@ class SaveSuccessDialog(QDialog):
             self.btn_print_rx.setEnabled(False)
             self.btn_print_rx.setStyleSheet("padding: 8px; background: #cbd5e0; color: #718096; border-radius: 4px;")
         btn_layout.addWidget(self.btn_print_rx)
-        
+
         self.btn_close = QPushButton("Đóng")
         self.btn_close.setStyleSheet("padding: 8px; background: #e2e8f0; border-radius: 4px;")
         self.btn_close.clicked.connect(self.accept)
         btn_layout.addWidget(self.btn_close)
-        
+
         layout.addLayout(btn_layout)
 
+    def _logo_html(self):
+        try:
+            logo_path = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'assets', 'logo.png'
+            )
+            if os.path.exists(logo_path):
+                return f'<div style="text-align:center; margin-bottom:6px;"><img src="file:///{logo_path}" style="height:55px;"></div>'
+        except Exception:
+            pass
+        return ""
+
+    def _checklist_items(self):
+        tests = [t.lower() for t in self.lab_data.get('tests', [])]
+        def has(*keywords):
+            return any(any(k in t for k in keywords) for t in tests)
+        return [
+            ("Kê đơn thuốc",        bool(self.rx_data.get('items'))),
+            ("Xét nghiệm máu",      has("máu")),
+            ("Xét nghiệm nước tiểu", has("nước tiểu")),
+            ("Chụp X-Quang",        has("x-quang", "x quang")),
+            ("Siêu âm",             has("siêu âm")),
+            ("CT Scan",             has("ct scan", "ct ")),
+            ("MRI",                 has("mri")),
+            ("Tái khám",            bool(self.exam_data.get('follow_up_date'))),
+        ]
+
     def _print_exam(self):
+        vitals_html = f"""
+        <table class="vitals-table">
+            <tr>
+                <td><b>Chiều cao:</b> {self.exam_data.get('height') or '—'} cm</td>
+                <td><b>Cân nặng:</b> {self.exam_data.get('weight') or '—'} kg</td>
+            </tr>
+            <tr>
+                <td><b>Huyết áp:</b> {self.exam_data.get('blood_pressure') or '—'} mmHg</td>
+                <td><b>Nhịp tim:</b> {self.exam_data.get('heart_rate') or '—'} lần/phút</td>
+            </tr>
+            <tr>
+                <td><b>Nhiệt độ:</b> {self.exam_data.get('temperature') or '—'} °C</td>
+                <td><b>SpO2:</b> {self.exam_data.get('spo2') or '—'} %</td>
+            </tr>
+        </table>
+        """
+
+        checklist_html = "".join(
+            f"<div class='check-item'>{'☑' if checked else '☐'} {label}</div>"
+            for label, checked in self._checklist_items()
+        )
+
         html = f"""
         <html>
         <head>
             <meta charset="utf-8">
             <style>
-                body {{ font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #333; }}
-                h2 {{ text-align: center; margin-bottom: 2px; font-size: 26px; color: #111; }}
-                h4 {{ text-align: center; margin-top: 0; font-weight: normal; font-size: 14px; color: #666; text-transform: uppercase; }}
-                hr {{ border: 0; border-top: 2px solid #2b6cb0; margin: 20px 0; }}
-                .info-table {{ width: 100%; border: none; margin-bottom: 20px; }}
-                .info-table td {{ padding: 4px; border: none; }}
-                .section-title {{ font-style: italic; font-weight: bold; font-size: 16px; margin: 20px 0 10px 0; }}
-                .details {{ margin-left: 20px; }}
-                .details p {{ margin: 8px 0; }}
-                .sign {{ text-align: center; float: right; width: 250px; margin-top: 40px; }}
+                body {{ font-family: 'Roboto', 'Noto Sans', Arial, sans-serif; font-size: 13px; line-height: 1.6; color: #333; }}
+                h2 {{ text-align: center; margin: 0; font-size: 24px; color: #0D47A1; letter-spacing: 1px; }}
+                h4 {{ text-align: center; margin-top: 2px; font-weight: normal; font-size: 12px; color: #666; text-transform: uppercase; }}
+                .code-row {{ text-align: center; font-size: 12px; color: #555; margin: 4px 0 10px 0; }}
+                hr {{ border: 0; border-top: 2px solid #1565C0; margin: 10px 0 18px 0; }}
+                .section-title {{ font-weight: bold; font-size: 14px; color: #0D47A1; margin: 16px 0 8px 0;
+                                   border-bottom: 1px solid #DADCE0; padding-bottom: 4px; }}
+                .info-table {{ width: 100%; border: none; margin-bottom: 6px; }}
+                .info-table td {{ padding: 3px 4px; border: none; vertical-align: top; }}
+                .vitals-table {{ width: 100%; border-collapse: collapse; margin-bottom: 6px; }}
+                .vitals-table td {{ border: 1px solid #DADCE0; padding: 6px 10px; width: 50%; }}
+                .check-item {{ display: inline-block; width: 48%; padding: 3px 0; font-size: 13px; }}
+                .sign {{ text-align: center; float: right; width: 250px; margin-top: 30px; }}
+                .text-block {{ margin: 4px 0 0 0; min-height: 16px; }}
             </style>
         </head>
         <body>
+            {self._logo_html()}
             <h2>PHIẾU KHÁM BỆNH</h2>
             <h4>HOSPITAL MANAGEMENT SYSTEM</h4>
+            <div class="code-row">Mã phiếu: {self.phieu_code} &nbsp;&nbsp;|&nbsp;&nbsp; Ngày khám: {datetime.now().strftime('%d/%m/%Y')}</div>
             <hr>
-            
+
+            <div class="section-title">THÔNG TIN BỆNH NHÂN</div>
             <table class="info-table">
                 <tr>
-                    <td style="width: 15%;"><b>Bệnh nhân:</b></td>
-                    <td style="width: 35%;">{self.patient['full_name']}</td>
-                    <td style="width: 15%;"><b>Bác sĩ:</b></td>
-                    <td style="width: 35%;">BS. {self.doctor_name}</td>
+                    <td style="width:15%;"><b>Họ và tên:</b></td>
+                    <td style="width:35%;">{self.patient['full_name']}</td>
+                    <td style="width:15%;"><b>Mã BN:</b></td>
+                    <td style="width:35%;">{self.patient['patient_code']}</td>
                 </tr>
                 <tr>
-                    <td><b>Ngày khám:</b></td>
-                    <td>{datetime.now().strftime('%d/%m/%Y')}</td>
+                    <td><b>Ngày sinh:</b></td>
+                    <td>{self.patient['birth_date'] or '—'}</td>
+                    <td><b>Giới tính:</b></td>
+                    <td>{self.patient['gender'] or '—'}</td>
+                </tr>
+                <tr>
                     <td><b>SĐT:</b></td>
-                    <td>{self.patient['phone']}</td>
+                    <td>{self.patient['phone'] or '—'}</td>
+                    <td><b>Địa chỉ:</b></td>
+                    <td>{self.patient['address'] or '—'}</td>
                 </tr>
             </table>
 
-            <div class="section-title">CHI TIẾT KHÁM BỆNH:</div>
-            <div class="details">
-                <p><b>Triệu chứng:</b> {self.exam_data.get('symptoms', '')}</p>
-                <p><b>Chẩn đoán:</b> {self.exam_data.get('diagnosis', '')}</p>
-                <p><b>Phác đồ điều trị:</b> {self.exam_data.get('treatment_plan', '')}</p>
-                <p><b>Lời dặn / Ghi chú:</b> {self.exam_data.get('notes', '')}</p>
-                <p><b>Hẹn tái khám:</b> {self.exam_data.get('follow_up_date') if self.exam_data.get('follow_up_date') else 'Không'}</p>
-            </div>
-            
+            <div class="section-title">THÔNG TIN KHÁM</div>
+            <table class="info-table">
+                <tr>
+                    <td style="width:15%;"><b>Bác sĩ khám:</b></td>
+                    <td style="width:35%;">BS. {self.doctor_name}</td>
+                    <td style="width:15%;"><b>Khoa:</b></td>
+                    <td style="width:35%;">{self.department}</td>
+                </tr>
+                <tr>
+                    <td><b>Phòng khám:</b></td>
+                    <td>{self.room}</td>
+                    <td></td><td></td>
+                </tr>
+            </table>
+
+            <div class="section-title">CHỈ SỐ SINH TỒN</div>
+            {vitals_html}
+
+            <div class="section-title">TRIỆU CHỨNG</div>
+            <div class="text-block">{self.exam_data.get('symptoms', '') or '—'}</div>
+
+            <div class="section-title">TIỀN SỬ BỆNH</div>
+            <div class="text-block">{self.exam_data.get('medical_history', '') or '—'}</div>
+
+            <div class="section-title">CHẨN ĐOÁN</div>
+            <div class="text-block">{self.exam_data.get('diagnosis', '') or '—'}</div>
+
+            <div class="section-title">KẾT LUẬN KHÁM</div>
+            <div class="text-block">{self.exam_data.get('conclusion', '') or '—'}</div>
+
+            <div class="section-title">CHỈ ĐỊNH</div>
+            {checklist_html}
+
+            <div class="section-title">LỜI DẶN CỦA BÁC SĨ</div>
+            <div class="text-block">{self.exam_data.get('notes', '') or '—'}</div>
+
+            <div class="section-title">NGÀY TÁI KHÁM</div>
+            <div class="text-block">{self.exam_data.get('follow_up_date') or 'Không hẹn tái khám'}</div>
+
             <div class="sign">
-                <p><b>Chữ ký bác sĩ</b></p>
+                <p>Đà Nẵng, ngày {datetime.now().strftime('%d')} tháng {datetime.now().strftime('%m')} năm {datetime.now().strftime('%Y')}</p>
+                <p><b>BÁC SĨ KHÁM</b><br><i>(Ký và ghi rõ họ tên)</i></p>
                 <br><br><br><br>
                 <p>BS. {self.doctor_name}</p>
             </div>
         </body>
         </html>
         """
-        self._do_print(html, f"phieu_kham_{self.patient['patient_code']}.pdf")
+        self._do_print(html, f"phieu_kham_{self.phieu_code}.pdf")
 
     def _print_rx(self):
         rows = ""
         for i, item in enumerate(self.rx_data.get('items', [])):
-            bg_color = "#ffffff" if i % 2 == 0 else "#ebf8ff"
+            bg_color = "#FFFFFF" if i % 2 == 0 else "#E3F2FD"
             rows += f"""
             <tr style="background-color: {bg_color};">
                 <td style="text-align:center;">{i+1}</td>
                 <td>{item['name']}</td>
+                <td style="text-align:center;">{item.get('unit','') or '—'}</td>
                 <td style="text-align:center;">{item['quantity']}</td>
                 <td style="text-align:center;">{item['dosage']}</td>
                 <td style="text-align:center;">{item['duration_days']} ngày</td>
-                <td>{item.get('notes', '')}</td>
+                <td>{item.get('notes', '') or ''}</td>
             </tr>
             """
-            
+
         html = f"""
         <html>
         <head>
             <meta charset="utf-8">
             <style>
-                body {{ font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #333; }}
-                h2 {{ text-align: center; margin-bottom: 2px; font-size: 26px; color: #111; }}
-                h4 {{ text-align: center; margin-top: 0; font-weight: normal; font-size: 14px; color: #666; text-transform: uppercase; }}
-                hr {{ border: 0; border-top: 2px solid #2b6cb0; margin: 20px 0; }}
-                .info-table {{ width: 100%; border: none; margin-bottom: 20px; }}
-                .info-table td {{ padding: 4px; border: none; }}
-                .section-title {{ font-style: italic; font-weight: bold; font-size: 16px; margin: 20px 0 10px 0; }}
-                .rx-table {{ width: 100%; border-collapse: collapse; margin-top: 10px; }}
-                .rx-table th, .rx-table td {{ border: 1px solid #e2e8f0; padding: 8px; }}
-                .rx-table th {{ background-color: #2b6cb0; color: white; text-align: center; font-weight: bold; }}
-                .sign {{ text-align: center; float: right; width: 250px; margin-top: 40px; }}
+                body {{ font-family: 'Roboto', 'Noto Sans', Arial, sans-serif; font-size: 13px; line-height: 1.6; color: #333; }}
+                h2 {{ text-align: center; margin: 0; font-size: 24px; color: #0D47A1; letter-spacing: 1px; }}
+                h4 {{ text-align: center; margin-top: 2px; font-weight: normal; font-size: 12px; color: #666; text-transform: uppercase; }}
+                .code-row {{ text-align: center; font-size: 12px; color: #555; margin: 4px 0 10px 0; }}
+                hr {{ border: 0; border-top: 2px solid #1565C0; margin: 10px 0 18px 0; }}
+                .section-title {{ font-weight: bold; font-size: 14px; color: #0D47A1; margin: 16px 0 8px 0;
+                                   border-bottom: 1px solid #DADCE0; padding-bottom: 4px; }}
+                .info-table {{ width: 100%; border: none; margin-bottom: 6px; }}
+                .info-table td {{ padding: 3px 4px; border: none; }}
+                .rx-table {{ width: 100%; border-collapse: collapse; margin-top: 8px; }}
+                .rx-table th, .rx-table td {{ border: 1px solid #DADCE0; padding: 7px; font-size: 12px; }}
+                .rx-table th {{ background-color: #1565C0; color: white; text-align: center; font-weight: bold; }}
+                .note-list {{ margin: 4px 0 0 18px; padding: 0; }}
+                .note-list li {{ margin-bottom: 3px; }}
+                .sign {{ text-align: center; float: right; width: 250px; margin-top: 30px; }}
             </style>
         </head>
         <body>
+            {self._logo_html()}
             <h2>ĐƠN THUỐC</h2>
             <h4>HOSPITAL MANAGEMENT SYSTEM</h4>
+            <div class="code-row">Mã đơn: {self.don_code or '—'} &nbsp;&nbsp;|&nbsp;&nbsp; Ngày kê đơn: {datetime.now().strftime('%d/%m/%Y')}</div>
             <hr>
-            
+
+            <div class="section-title">THÔNG TIN BỆNH NHÂN</div>
             <table class="info-table">
                 <tr>
-                    <td style="width: 15%;"><b>Bệnh nhân:</b></td>
-                    <td style="width: 35%;">{self.patient['full_name']}</td>
-                    <td style="width: 15%;"><b>Bác sĩ:</b></td>
-                    <td style="width: 35%;">BS. {self.doctor_name}</td>
+                    <td style="width:15%;"><b>Họ và tên:</b></td>
+                    <td style="width:35%;">{self.patient['full_name']}</td>
+                    <td style="width:15%;"><b>Bác sĩ:</b></td>
+                    <td style="width:35%;">BS. {self.doctor_name}</td>
                 </tr>
                 <tr>
-                    <td><b>Ngày kê đơn:</b></td>
-                    <td>{datetime.now().strftime('%d/%m/%Y')}</td>
-                    <td><b>Mã đơn:</b></td>
-                    <td>#{self.patient['patient_code']}</td>
+                    <td><b>Ngày sinh:</b></td>
+                    <td>{self.patient['birth_date'] or '—'}</td>
+                    <td><b>Khoa khám:</b></td>
+                    <td>{self.department}</td>
+                </tr>
+                <tr>
+                    <td><b>Giới tính:</b></td>
+                    <td>{self.patient['gender'] or '—'}</td>
+                    <td><b>SĐT:</b></td>
+                    <td>{self.patient['phone'] or '—'}</td>
                 </tr>
             </table>
-            
-            <div class="section-title">CHI TIẾT ĐƠN THUỐC:</div>
-            
+
+            <div class="section-title">CHI TIẾT ĐƠN THUỐC</div>
             <table class="rx-table">
                 <tr>
-                    <th style="width: 5%;">STT</th>
-                    <th style="width: 30%;">Tên thuốc</th>
-                    <th style="width: 10%;">Số lượng</th>
-                    <th style="width: 25%;">Liều dùng</th>
-                    <th style="width: 10%;">Số ngày</th>
-                    <th style="width: 20%;">Ghi chú</th>
+                    <th style="width:5%;">STT</th>
+                    <th style="width:25%;">Tên thuốc</th>
+                    <th style="width:10%;">Đơn vị</th>
+                    <th style="width:10%;">Số lượng</th>
+                    <th style="width:20%;">Liều dùng</th>
+                    <th style="width:10%;">Số ngày</th>
+                    <th style="width:20%;">Ghi chú</th>
                 </tr>
                 {rows}
             </table>
-            
-            <p style="margin-top: 20px;"><b>Lời dặn:</b> {self.rx_data.get('notes', '')}</p>
-            
+
+            <div class="section-title">HƯỚNG DẪN SỬ DỤNG THUỐC</div>
+            <ul class="note-list">
+                <li>Uống thuốc đúng liều lượng được kê.</li>
+                <li>Không tự ý ngưng thuốc khi chưa có chỉ định.</li>
+                <li>Báo ngay cho bác sĩ nếu xuất hiện dấu hiệu dị ứng.</li>
+            </ul>
+
+            <div class="section-title">LỜI DẶN CỦA BÁC SĨ</div>
+            <p>{self.rx_data.get('notes', '') or '—'}</p>
+
+            <div class="section-title">THÔNG TIN TÁI KHÁM</div>
+            <p>Ngày tái khám: {self.exam_data.get('follow_up_date') or 'Không hẹn tái khám'}<br>
+               Ghi chú: Mang theo đơn thuốc và kết quả xét nghiệm (nếu có).</p>
+
             <div class="sign">
-                <p><b>Chữ ký bác sĩ</b></p>
+                <p>Đà Nẵng, ngày {datetime.now().strftime('%d')} tháng {datetime.now().strftime('%m')} năm {datetime.now().strftime('%Y')}</p>
+                <p><b>BÁC SĨ ĐIỀU TRỊ</b><br><i>(Ký và ghi rõ họ tên)</i></p>
                 <br><br><br><br>
                 <p>BS. {self.doctor_name}</p>
             </div>
         </body>
         </html>
         """
-        self._do_print(html, f"don_thuoc_{self.patient['patient_code']}.pdf")
-        
+        self._do_print(html, f"don_thuoc_{self.don_code or self.patient['patient_code']}.pdf")
+
     def _do_print(self, html, default_filename="export.pdf"):
         from PyQt6.QtWidgets import QFileDialog, QMessageBox
-        import os
-        
-        export_dir = r"C:\Users\Admin\Downloads\HospitalExports"
+
+        # Thư mục mặc định cross-platform (thay vì hardcode C:\Users\Admin\...)
+        export_dir = os.path.join(os.path.expanduser("~"), "Downloads", "HospitalExports")
         if not os.path.exists(export_dir):
             try:
                 os.makedirs(export_dir, exist_ok=True)
             except Exception:
-                pass
-                
+                export_dir = os.path.expanduser("~")
+
         default_path = os.path.join(export_dir, default_filename)
-        
+
         filepath, _ = QFileDialog.getSaveFileName(
             self, "Lưu file PDF", default_path, "PDF Files (*.pdf)"
         )
         if not filepath:
             return
-            
+
         printer = QPrinter(QPrinter.PrinterMode.HighResolution)
         printer.setOutputFormat(QPrinter.OutputFormat.PdfFormat)
         printer.setOutputFileName(filepath)
-        
+
         doc = QTextDocument()
         doc.setHtml(html)
         doc.print(printer)
-        
+
         QMessageBox.information(self, "Thành công", f"Đã lưu thành file:\n{filepath}")
 
 
@@ -855,6 +1034,16 @@ class ExaminationDialog(QDialog):
         # Resolve users.id -> staff.id so FK columns point to the right row
         doc_staff_id = dao.get_staff_id_by_user_id(user["id"]) if user else None
 
+        # Khoa & phòng khám để in lên phiếu
+        department = None
+        if doc_staff_id:
+            staff_row = dao.get_staff_by_id(doc_staff_id)
+            department = staff_row["dept_name"] if staff_row else None
+        room = None
+        if self.appointment_id:
+            appt = dao.get_appointment_by_id(self.appointment_id)
+            room = appt["room_number"] if appt else None
+
         # 2. Save medical record
         record_data = {
             "patient_id":    self.patient_id,
@@ -876,25 +1065,23 @@ class ExaminationDialog(QDialog):
             })
 
         # 4. Save prescription (if items exist)
+        presc_id = None
         if rx_data["items"]:
             try:
-                dao.save_prescription({
+                presc_id = dao.save_prescription({
                     "medical_record_id": record_id,
                     "doctor_id":         doc_staff_id,
                     "notes":             rx_data["notes"],
                     "items":             rx_data["items"],
                 })
             except ValueError as e:
-                # Prescription failed (insufficient stock) —
-                # compensate by removing the medical_record we just wrote,
-                # then surface a clear error dialog to the user.
                 dao.delete_medical_record(record_id)
                 QMessageBox.critical(
                     self, "Không đủ tồn kho",
                     str(e) + "\n\nĐơn thuốc chưa được lưu.\n"
                              "Vui lòng điều chỉnh số lượng và thử lại."
                 )
-                self.tabs.setCurrentIndex(2)   # jump back to Prescription tab
+                self.tabs.setCurrentIndex(2)
                 return
 
         # 5. Update appointment status → Hoàn thành
@@ -914,7 +1101,11 @@ class ExaminationDialog(QDialog):
             summary += f"\n📅 Hẹn tái khám: {exam_data['follow_up_date']}"
 
         doc_name = user['full_name'] if user else '—'
-        dialog = SaveSuccessDialog(summary, self.patient, exam_data, rx_data, doc_name, self)
+        dialog = SaveSuccessDialog(
+            summary, self.patient, exam_data, rx_data, lab_data, doc_name,
+            department=department, room=room,
+            record_id=record_id, presc_id=presc_id, parent=self
+        )
         dialog.exec()
         self.accept()
 

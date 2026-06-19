@@ -119,6 +119,14 @@ def init_db():
         treatment_plan  TEXT,
         notes           TEXT,
         follow_up_date  TEXT,
+        height          REAL,
+        weight          REAL,
+        blood_pressure  TEXT,
+        heart_rate      INTEGER,
+        temperature     REAL,
+        spo2            INTEGER,
+        medical_history TEXT,
+        conclusion      TEXT,
         created_at      TEXT DEFAULT (datetime('now','localtime'))
     )""")
 
@@ -388,6 +396,21 @@ def _migrate_db(conn, cur):
                 cur.execute("INSERT OR IGNORE INTO role_permissions (role_id, permission_id) VALUES (?, ?)", (role_id, perm_id[0]))
                 conn.commit()
     except Exception as e:
+        pass
+
+    # medical_records: vital signs & conclusion columns (v5 addition)
+    try:
+        mr_cols = [row[1] for row in cur.execute("PRAGMA table_info(medical_records)").fetchall()]
+        mr_new_cols = {
+            "height": "REAL", "weight": "REAL", "blood_pressure": "TEXT",
+            "heart_rate": "INTEGER", "temperature": "REAL", "spo2": "INTEGER",
+            "medical_history": "TEXT", "conclusion": "TEXT",
+        }
+        for col, coltype in mr_new_cols.items():
+            if col not in mr_cols:
+                cur.execute(f"ALTER TABLE medical_records ADD COLUMN {col} {coltype}")
+        conn.commit()
+    except Exception:
         pass
 
 

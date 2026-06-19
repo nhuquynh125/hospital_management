@@ -228,12 +228,17 @@ def add_medical_record(data: dict) -> int:
     cur = conn.execute("""
         INSERT INTO medical_records
             (patient_id, doctor_id, visit_date, symptoms, diagnosis,
-             treatment_plan, notes, follow_up_date)
-        VALUES (?,?,?,?,?,?,?,?)
+             treatment_plan, notes, follow_up_date,
+             height, weight, blood_pressure, heart_rate, temperature, spo2,
+             medical_history, conclusion)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     """, (data["patient_id"], data.get("doctor_id"),
           data.get("visit_date", datetime.now().strftime("%Y-%m-%d %H:%M")),
           data.get("symptoms"), data.get("diagnosis"),
-          data.get("treatment_plan"), data.get("notes"), data.get("follow_up_date")))
+          data.get("treatment_plan"), data.get("notes"), data.get("follow_up_date"),
+          data.get("height"), data.get("weight"), data.get("blood_pressure"),
+          data.get("heart_rate"), data.get("temperature"), data.get("spo2"),
+          data.get("medical_history"), data.get("conclusion")))
     conn.commit()
     rid = cur.lastrowid
     conn.close()
