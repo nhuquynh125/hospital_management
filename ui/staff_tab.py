@@ -203,6 +203,7 @@ class StaffFormDialog(QDialog):
 # ═══════════════════════════════════════════════════════════
 #  Main Staff Tab
 # ═══════════════════════════════════════════════════════════
+class StaffTab(QWidget):
     def __init__(self):
         super().__init__()
         self.user = auth.get_current_user()
