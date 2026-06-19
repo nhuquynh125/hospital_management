@@ -14,18 +14,9 @@ try:
 
     # Register Unicode-capable font for Vietnamese + multi-lang text
     _FONT_CANDIDATES = [
-        # Windows
-        ("Arial",          r"C:\Windows\Fonts\arial.ttf",    r"C:\Windows\Fonts\arialbd.ttf"),
-        ("Tahoma",         r"C:\Windows\Fonts\tahoma.ttf",   r"C:\Windows\Fonts\tahomabd.ttf"),
-        ("Calibri",        r"C:\Windows\Fonts\calibri.ttf",  r"C:\Windows\Fonts\calibrib.ttf"),
-        # Linux (DejaVu / Liberation — full Unicode / Vietnamese support)
-        ("DejaVuSans",     "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-                           "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"),
-        ("LiberationSans", "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-                           "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"),
-        # macOS
-        ("Arial",          "/Library/Fonts/Arial.ttf",          "/Library/Fonts/Arial Bold.ttf"),
-        ("Helvetica",      "/System/Library/Fonts/Helvetica.ttc", None),
+        ("Arial",     r"C:\Windows\Fonts\arial.ttf",    r"C:\Windows\Fonts\arialbd.ttf"),
+        ("Tahoma",    r"C:\Windows\Fonts\tahoma.ttf",   r"C:\Windows\Fonts\tahomabd.ttf"),
+        ("Calibri",   r"C:\Windows\Fonts\calibri.ttf",  r"C:\Windows\Fonts\calibrib.ttf"),
     ]
     _PDF_FONT       = "Helvetica"          # fallback
     _PDF_FONT_BOLD  = "Helvetica-Bold"

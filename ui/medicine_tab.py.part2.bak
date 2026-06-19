@@ -596,15 +596,12 @@ class MedicineTab(QWidget):
             self.load_data()
 
     def _new_prescription(self):
-        # Prescriptions must be linked to a medical_record_id (created during examination).
-        # Opening a blank PrescriptionDialog here would produce an orphaned prescription
-        # with medical_record_id=None and doctor_id=None, which bypasses billing validation.
-        QMessageBox.information(
-            self, "Thông báo",
-            "Đơn thuốc phải được tạo trong quá trình khám bệnh.\n"
-            "Vui lòng mở hồ sơ khám của bệnh nhân (tab Lịch hẹn → Khám bệnh) "
-            "và kê đơn từ đó."
-        )
+        # For demo — in real use, link to a medical_record_id
+        dlg = PrescriptionDialog(self, medical_record_id=None, doctor_id=None)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            dao.save_prescription(dlg.result_data)
+            self.load_data()
+            QMessageBox.information(self, "Thành công", "Đã lưu đơn thuốc.")
 
     def _dispense_prescription(self, presc_id):
         import core.auth as auth

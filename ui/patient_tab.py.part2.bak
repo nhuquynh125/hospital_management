@@ -13,7 +13,7 @@ import core.auth as auth
 from utils.search import smart_search_patients
 
 BLOOD_TYPES = ["", "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
-GENDERS = ["Nam", "Nữ", "Khác"]  # Must match DB CHECK(gender IN ('Nam','Nữ','Khác'))
+GENDERS = ["Nam", "Nữ", "Khác","Không muốn trả lời"]
 
 
 # ═══════════════════════════════════════════════════════════
@@ -356,7 +356,7 @@ class PatientTab(QWidget):
         self.search_box.setObjectName("searchBox")
         self.search_box.textChanged.connect(self._apply_filter)
 
-        self.gender_cb = QComboBox(); self.gender_cb.addItems(["Tất cả giới tính"] + GENDERS)
+        self.gender_cb = QComboBox(); self.gender_cb.addItems(["Tất cả giới tính"] + GENDERS[1:])
         self.gender_cb.currentIndexChanged.connect(self._apply_filter)
 
         self.blood_cb = QComboBox(); self.blood_cb.addItems(["Tất cả nhóm máu"] + BLOOD_TYPES[1:])

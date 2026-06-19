@@ -1369,8 +1369,8 @@ def get_drug_interactions_list() -> list:
         JOIN medicines m2 ON di.medicine_id_2 = m2.id
         ORDER BY
             CASE di.severity
-                WHEN 'Nguy hiểm'  THEN 1
-                WHEN 'Thận trọng' THEN 2
+                WHEN 'Nguy hiem'  THEN 1
+                WHEN 'Than trong' THEN 2
                 ELSE 3
             END,
             m1.name
@@ -1429,11 +1429,10 @@ def get_patient_prescriptions_active(patient_id: int) -> list:
                pi.dosage, pi.duration_days,
                p.issue_date, p.status
         FROM prescriptions p
-        JOIN medical_records mr ON p.medical_record_id = mr.id
         JOIN prescription_items pi ON pi.prescription_id = p.id
         JOIN medicines m ON m.id = pi.medicine_id
-        WHERE mr.patient_id = ?
-          AND p.status IN ('Đã duyệt', 'Đã phát')
+        WHERE p.patient_id = ?
+          AND p.status IN ('Da duyet', 'Da phat')
         ORDER BY p.issue_date DESC
     """, (patient_id,)).fetchall()
     conn.close()

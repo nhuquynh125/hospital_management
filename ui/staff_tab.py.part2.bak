@@ -11,7 +11,7 @@ import database.dao as dao
 import core.auth as auth
 
 POSITIONS = [
-    "Bác sĩ",             # doctor
+    "Bác si",             # doctor
     "Y tá / Điều dưỡng",   # nurse  (matches seed)
     "Lễ tân",            # receptionist
     "Dược sĩ",           # pharmacist

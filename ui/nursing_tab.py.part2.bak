@@ -204,7 +204,7 @@ class NursingTab(QWidget):
         self.search_box.setObjectName("searchBox")
         self.search_box.textChanged.connect(self.load_data)
         self.status_cb = QComboBox()
-        self.status_cb.addItems(["Tất cả tình trạng","Ổn định","Cần theo dõi","Nặng","Nguy kịch","Xuất viện"])
+        self.status_cb.addItems(["Tất cả tình trạng","Ổn định","Cần theo dõi","Nặng","Nguy kịch"])
         self.status_cb.currentIndexChanged.connect(self.load_data)
         f_row.addWidget(self.search_box, 2)
         f_row.addWidget(self.status_cb)

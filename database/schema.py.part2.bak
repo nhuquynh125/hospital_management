@@ -346,21 +346,6 @@ def _migrate_db(conn, cur):
         )""")
         conn.commit()
 
-    # Grant settings.leave to minor roles that were missing it (v4 fix)
-    try:
-        minor_roles = ("security_guard", "ambulance_driver", "janitor")
-        for role_name in minor_roles:
-            row = cur.execute("SELECT id FROM roles WHERE role_name=?", (role_name,)).fetchone()
-            perm = cur.execute("SELECT id FROM permissions WHERE permission_name='settings.leave'").fetchone()
-            if row and perm:
-                cur.execute(
-                    "INSERT OR IGNORE INTO role_permissions (role_id, permission_id) VALUES (?, ?)",
-                    (row[0], perm[0])
-                )
-        conn.commit()
-    except Exception:
-        pass
-
     # Give 'settings' permission to director
     try:
         cur.execute("SELECT id FROM roles WHERE role_name='director'")
@@ -425,9 +410,9 @@ def _seed_rbac(cur, conn):
                        "settings.personal_info", "settings.leave",
                        "settings.salary_view", "settings.salary_config", "settings.security"],
         # ── Support staff: limited settings only ──
-        "security_guard":   ["settings.personal_info", "settings.leave", "settings.salary_view", "settings.security"],
-        "ambulance_driver": ["settings.personal_info", "settings.leave", "settings.salary_view", "settings.security"],
-        "janitor":          ["settings.personal_info", "settings.leave", "settings.salary_view", "settings.security"],
+        "security_guard":   ["settings.personal_info", "settings.salary_view", "settings.security"],
+        "ambulance_driver":  ["settings.personal_info", "settings.salary_view", "settings.security"],
+        "janitor":           ["settings.personal_info", "settings.salary_view", "settings.security"],
     }
 
     # ── Full-access roles get all settings sections ──

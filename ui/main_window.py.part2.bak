@@ -18,7 +18,7 @@ from ui.export_tab        import ExportTab
 from ui.stats_tab         import StatsTab
 from ui.drug_interaction_tab import DrugInteractionTab
 from ui.executive_report_tab import ExecutiveReportTab
-# FraudDetectionTab removed — was imported but never added to nav_items (dead code)
+from ui.fraud_detection_tab import FraudDetectionTab
 from ui.predictive_analytics_tab import PredictiveAnalyticsTab
 from ui.chatbot_tab       import ChatbotTab
 from ui.settings_tab      import SettingsTab
