@@ -599,7 +599,7 @@ class SaveSuccessDialog(QDialog):
                 os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'assets', 'logo.png'
             )
             if os.path.exists(logo_path):
-                return f'<div style="text-align:center; margin-bottom:6px;"><img src="file:///{logo_path}" style="height:55px;"></div>'
+                return f'<div style="text-align:left; margin-bottom:10px;"><img src="file:///{logo_path}" width="65" height="65"></div>'
         except Exception:
             pass
         return ""
@@ -647,20 +647,20 @@ class SaveSuccessDialog(QDialog):
         <head>
             <meta charset="utf-8">
             <style>
-                body {{ font-family: 'Roboto', 'Noto Sans', Arial, sans-serif; font-size: 13px; line-height: 1.6; color: #333; }}
-                h2 {{ text-align: center; margin: 0; font-size: 24px; color: #0D47A1; letter-spacing: 1px; }}
-                h4 {{ text-align: center; margin-top: 2px; font-weight: normal; font-size: 12px; color: #666; text-transform: uppercase; }}
-                .code-row {{ text-align: center; font-size: 12px; color: #555; margin: 4px 0 10px 0; }}
+                body {{ font-family: 'Roboto', 'Noto Sans', Arial, sans-serif; font-size: 13pt; line-height: 1.6; color: #333; }}
+                h2 {{ text-align: center; margin: 0; font-size: 22pt; color: #0D47A1; letter-spacing: 1px; }}
+                h4 {{ text-align: center; margin-top: 2px; font-weight: normal; font-size: 14pt; color: #666; text-transform: uppercase; }}
+                .code-row {{ text-align: center; font-size: 12pt; color: #555; margin: 4px 0 10px 0; }}
                 hr {{ border: 0; border-top: 2px solid #1565C0; margin: 10px 0 18px 0; }}
-                .section-title {{ font-weight: bold; font-size: 14px; color: #0D47A1; margin: 16px 0 8px 0;
+                .section-title {{ font-weight: bold; font-size: 15pt; color: #0D47A1; margin: 16px 0 8px 0;
                                    border-bottom: 1px solid #DADCE0; padding-bottom: 4px; }}
                 .info-table {{ width: 100%; border: none; margin-bottom: 6px; }}
-                .info-table td {{ padding: 3px 4px; border: none; vertical-align: top; }}
+                .info-table td {{ padding: 3px 4px; border: none; vertical-align: top; font-size: 13pt; }}
                 .vitals-table {{ width: 100%; border-collapse: collapse; margin-bottom: 6px; }}
-                .vitals-table td {{ border: 1px solid #DADCE0; padding: 6px 10px; width: 50%; }}
-                .check-item {{ display: inline-block; width: 48%; padding: 3px 0; font-size: 13px; }}
-                .sign {{ text-align: center; float: right; width: 250px; margin-top: 30px; }}
-                .text-block {{ margin: 4px 0 0 0; min-height: 16px; }}
+                .vitals-table td {{ border: 1px solid #DADCE0; padding: 6px 10px; width: 50%; font-size: 13pt; }}
+                .check-item {{ display: inline-block; width: 48%; padding: 3px 0; font-size: 13pt; }}
+                .sign {{ text-align: center; float: right; width: 250px; margin-top: 30px; font-size: 13pt; }}
+                .text-block {{ margin: 4px 0 0 0; min-height: 16px; font-size: 13pt; }}
             </style>
         </head>
         <body>
@@ -763,21 +763,21 @@ class SaveSuccessDialog(QDialog):
         <head>
             <meta charset="utf-8">
             <style>
-                body {{ font-family: 'Roboto', 'Noto Sans', Arial, sans-serif; font-size: 13px; line-height: 1.6; color: #333; }}
-                h2 {{ text-align: center; margin: 0; font-size: 24px; color: #0D47A1; letter-spacing: 1px; }}
-                h4 {{ text-align: center; margin-top: 2px; font-weight: normal; font-size: 12px; color: #666; text-transform: uppercase; }}
-                .code-row {{ text-align: center; font-size: 12px; color: #555; margin: 4px 0 10px 0; }}
+                body {{ font-family: 'Roboto', 'Noto Sans', Arial, sans-serif; font-size: 13pt; line-height: 1.6; color: #333; }}
+                h2 {{ text-align: center; margin: 0; font-size: 22pt; color: #0D47A1; letter-spacing: 1px; }}
+                h4 {{ text-align: center; margin-top: 2px; font-weight: normal; font-size: 14pt; color: #666; text-transform: uppercase; }}
+                .code-row {{ text-align: center; font-size: 12pt; color: #555; margin: 4px 0 10px 0; }}
                 hr {{ border: 0; border-top: 2px solid #1565C0; margin: 10px 0 18px 0; }}
-                .section-title {{ font-weight: bold; font-size: 14px; color: #0D47A1; margin: 16px 0 8px 0;
+                .section-title {{ font-weight: bold; font-size: 15pt; color: #0D47A1; margin: 16px 0 8px 0;
                                    border-bottom: 1px solid #DADCE0; padding-bottom: 4px; }}
                 .info-table {{ width: 100%; border: none; margin-bottom: 6px; }}
-                .info-table td {{ padding: 3px 4px; border: none; }}
+                .info-table td {{ padding: 3px 4px; border: none; font-size: 13pt; }}
                 .rx-table {{ width: 100%; border-collapse: collapse; margin-top: 8px; }}
-                .rx-table th, .rx-table td {{ border: 1px solid #DADCE0; padding: 7px; font-size: 12px; }}
-                .rx-table th {{ background-color: #1565C0; color: white; text-align: center; font-weight: bold; }}
-                .note-list {{ margin: 4px 0 0 18px; padding: 0; }}
+                .rx-table th, .rx-table td {{ border: 1px solid #DADCE0; padding: 7px; font-size: 12pt; }}
+                .rx-table th {{ background-color: #1565C0; color: white; text-align: center; font-weight: bold; font-size: 13pt; }}
+                .note-list {{ margin: 4px 0 0 18px; padding: 0; font-size: 13pt; }}
                 .note-list li {{ margin-bottom: 3px; }}
-                .sign {{ text-align: center; float: right; width: 250px; margin-top: 30px; }}
+                .sign {{ text-align: center; float: right; width: 250px; margin-top: 30px; font-size: 13pt; }}
             </style>
         </head>
         <body>
@@ -867,9 +867,11 @@ class SaveSuccessDialog(QDialog):
         if not filepath:
             return
 
-        printer = QPrinter(QPrinter.PrinterMode.HighResolution)
+        from PyQt6.QtGui import QPageSize
+        printer = QPrinter()
         printer.setOutputFormat(QPrinter.OutputFormat.PdfFormat)
         printer.setOutputFileName(filepath)
+        printer.setPageSize(QPageSize(QPageSize.PageSizeId.A4))
 
         doc = QTextDocument()
         doc.setHtml(html)

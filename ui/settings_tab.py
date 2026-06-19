@@ -68,8 +68,8 @@ class SettingsTab(QWidget):
         elif _can("settings.salary_view"):
             tabs.addTab(_PayslipViewerWidget(), "\U0001f9fe  Phi\u1ebfu l\u01b0\u01a1ng")
 
-        if _can("settings.security") or role == "admin":
-            tabs.addTab(_SecurityWidget(), "\U0001f512  B\u1ea3o m\u1eadt")
+        # Mọi tài khoản đều có quyền đổi mật khẩu
+        tabs.addTab(_SecurityWidget(), "\U0001f512  B\u1ea3o m\u1eadt")
 
         if role == "admin" or _can("settings"):
             tabs.addTab(_BackupWidget(), "\U0001f4be  Sao l\u01b0u / Ph\u1ee5c h\u1ed3i")
@@ -147,7 +147,8 @@ class _PersonalInfoWidget(_scroll):
         super().__init__()
         self._ro = read_only_mode
         user  = auth.get_current_user() or {}
-        staff = dao.get_staff_profile(user.get("id")) or {}
+        staff_row = dao.get_staff_profile(user.get("id"))
+        staff = dict(staff_row) if staff_row else {}
         self._staff = staff; self._user = user
 
         title = QLabel("\U0001f464  Th\xf4ng tin c\xe1 nh\xe2n")
@@ -215,7 +216,8 @@ class _LeaveManagementWidget(_scroll):
     def __init__(self):
         super().__init__()
         user  = auth.get_current_user() or {}
-        self._staff = dao.get_staff_profile(user.get("id")) or {}
+        staff_row = dao.get_staff_profile(user.get("id"))
+        self._staff = dict(staff_row) if staff_row else {}
         self._is_hr = _can("settings.salary_config") # HR can approve/reject
 
         title = QLabel("\U0001f3d6\ufe0f  Qu\u1ea3n l\xfd ngh\u1ec9 ph\xe9p")
@@ -309,7 +311,8 @@ class _PayslipViewerWidget(_scroll):
     def __init__(self):
         super().__init__()
         user  = auth.get_current_user() or {}
-        staff = dao.get_staff_profile(user.get("id")) or {}
+        staff_row = dao.get_staff_profile(user.get("id"))
+        staff = dict(staff_row) if staff_row else {}
 
         title = QLabel("\U0001f9fe  Phi\u1ebfu l\u01b0\u01a1ng c\u1ee7a t\xf4i")
         title.setFont(QFont("Segoe UI", 13, QFont.Weight.Bold))
@@ -367,7 +370,8 @@ class _SalaryConfigWidget(_scroll):
     def __init__(self):
         super().__init__()
         user  = auth.get_current_user() or {}
-        staff = dao.get_staff_profile(user.get("id")) or {}
+        staff_row = dao.get_staff_profile(user.get("id"))
+        staff = dict(staff_row) if staff_row else {}
 
         title = QLabel("\U0001f4b0  L\u01b0\u01a1ng & Th\u01b0\u1edfng")
         title.setFont(QFont("Segoe UI", 13, QFont.Weight.Bold))

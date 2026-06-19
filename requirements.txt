@@ -11,5 +11,3 @@ reportlab>=4.0.0        # Xuất PDF
 openpyxl>=3.1.0         # Xuất Excel
 
 # ── Phần 3 (AI & Biểu đồ) ────────────────────────────────
-google-generativeai>=0.7.0   # Chatbot AI (Gemini, cần GEMINI_API_KEY trong .env)
-python-dotenv>=1.0.0          # Đọc API key từ file .env

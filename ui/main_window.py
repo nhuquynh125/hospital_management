@@ -12,13 +12,13 @@ from ui.appointment_tab   import AppointmentTab
 from ui.room_tab          import RoomTab
 from ui.medicine_tab      import MedicineTab
 from ui.nursing_tab       import NursingTab
+from ui.medical_order_tab import MedicalOrderTab
 from ui.lab_tab           import LabTab
 from ui.billing_tab       import BillingTab
 
 from ui.executive_report_tab import ExecutiveReportTab
 # FraudDetectionTab removed — was imported but never added to nav_items (dead code)
 from ui.predictive_analytics_tab import PredictiveAnalyticsTab
-from ui.chatbot_tab       import ChatbotTab
 from ui.settings_tab      import SettingsTab
 from ui.audit_log_tab     import AuditLogTab
 from ui.shift_schedule_tab import ShiftScheduleTab
@@ -83,6 +83,7 @@ class MainWindow(QMainWindow):
         nav_items = [
             ("👥","Bệnh nhân",          "patients",        lambda: PatientTab()),
             ("👨‍⚕️","Nhân viên",        "staff",           lambda: StaffTab()),
+            ("📋","Y lệnh",            "medical_orders",  lambda: MedicalOrderTab()),
             ("🗓️","Lịch hẹn",          "appointments",    lambda: AppointmentTab()),
             ("🏠","Phòng / Giường",     "rooms",           lambda: RoomTab()),
             ("🩺","Chăm sóc ĐD",       "medical_records", lambda: NursingTab()),
@@ -92,13 +93,19 @@ class MainWindow(QMainWindow):
             ("📋","Báo cáo Điều hành",  "reports",         lambda: ExecutiveReportTab()),
             ("🔮","Dự báo Lượng bệnh",  "reports",         lambda: PredictiveAnalyticsTab()),
 
-            ("💬","Chatbot AI",        "ai",              lambda: ChatbotTab()),
             ("🛡️","Audit Trail",       "audit_logs",      lambda: AuditLogTab()),
         ]
 
         excluded_shifts_roles = ("admin", "director", "accountant", "department_head", "hr_manager")
         if role_key not in excluded_shifts_roles:
             nav_items.insert(2, ("📅", "Lịch trực", None, lambda: ShiftScheduleTab()))
+
+        if role_key == "nurse":
+            nav_items = [item for item in nav_items if item[1] != "Lịch hẹn"]
+            y_lenh_idx = next((i for i, item in enumerate(nav_items) if item[1] == "Y lệnh"), -1)
+            if y_lenh_idx != -1:
+                y_lenh_item = nav_items.pop(y_lenh_idx)
+                nav_items.insert(0, y_lenh_item)
 
         if role_key == "doctor":
             lich_hen_idx = next((i for i, item in enumerate(nav_items) if item[1] == "Lịch hẹn"), -1)
@@ -109,9 +116,8 @@ class MainWindow(QMainWindow):
             # Xoá mục "Thuốc & Kê đơn" đối với bác sĩ
             nav_items = [item for item in nav_items if item[1] != "Thuốc & Kê đơn"]
 
-        has_settings_access = any(p.startswith("settings.") for p in auth._current_permissions)
-        if role_key == "admin" or has_settings_access:
-            nav_items.append(("⚙️","Cài đặt / Backup","settings",lambda: SettingsTab()))
+        # Mọi tài khoản đều có thể vào Cài đặt để đổi mật khẩu
+        nav_items.append(("⚙️","Cài đặt / Backup",None,lambda: SettingsTab()))
 
         if role_key != "director":
             nav_items = [item for item in nav_items if item[1] not in ("Báo cáo Điều hành", "Dự báo Lượng bệnh")]

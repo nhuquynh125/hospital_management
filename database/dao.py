@@ -438,10 +438,11 @@ def get_all_appointments(search="", status_filter="", date_filter=None):
 def get_appointment_by_id(appt_id: int):
     conn = get_connection()
     row = conn.execute("""
-        SELECT a.*, p.full_name AS patient_name, s.full_name AS doctor_name
+        SELECT a.*, p.full_name AS patient_name, s.full_name AS doctor_name, r.room_number
         FROM appointments a
         LEFT JOIN patients p ON a.patient_id=p.id
         LEFT JOIN staff    s ON a.doctor_id =s.id
+        LEFT JOIN rooms    r ON a.room_id=r.id
         WHERE a.id=?
     """, (appt_id,)).fetchone()
     conn.close()
@@ -1199,15 +1200,41 @@ def update_medical_order_status(order_id: int, status: str, nurse_id: int = None
 
 def add_medical_order(data: dict) -> int:
     conn = get_connection()
+    mr_id = data.get("medical_record_id")
+    if not mr_id:
+        row = conn.execute("SELECT id FROM medical_records WHERE patient_id=? ORDER BY visit_date DESC LIMIT 1", (data["patient_id"],)).fetchone()
+        if row:
+            mr_id = row["id"]
+        else:
+            cur = conn.execute("INSERT INTO medical_records (patient_id, doctor_id) VALUES (?, ?)", (data["patient_id"], data.get("doctor_id")))
+            mr_id = cur.lastrowid
+            
     cur = conn.execute("""
         INSERT INTO medical_orders (medical_record_id, patient_id, doctor_id, order_type, description, status)
         VALUES (?,?,?,?,?,?)
-    """, (data["medical_record_id"], data["patient_id"], data.get("doctor_id"),
+    """, (mr_id, data["patient_id"], data.get("doctor_id"),
           data["order_type"], data["description"], data.get("status", "Pending")))
     conn.commit()
     oid = cur.lastrowid
     conn.close()
     return oid
+
+def get_medical_order_by_id(oid: int):
+    conn = get_connection()
+    row = conn.execute("SELECT * FROM medical_orders WHERE id=?", (oid,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+def update_medical_order(oid: int, data: dict):
+    conn = get_connection()
+    conn.execute("""
+        UPDATE medical_orders SET patient_id=?, doctor_id=?, order_type=?, description=?, status=?
+        WHERE id=?
+    """, (data["patient_id"], data.get("doctor_id"),
+          data["order_type"], data["description"], data.get("status", "Pending"), oid))
+    conn.commit()
+    conn.close()
+
 
 
 # ═══════════════════════════════════════════════════════════

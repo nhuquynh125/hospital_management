@@ -178,17 +178,10 @@ class NursingTab(QWidget):
         layout.setContentsMargins(16,16,16,16)
         layout.setSpacing(10)
 
-        title = QLabel("🩺 Chăm sóc điều dưỡng & Y lệnh")
+        title = QLabel("🩺 Ghi chú chăm sóc điều dưỡng")
         title.setFont(QFont("Segoe UI", 14, QFont.Weight.Bold))
         title.setObjectName("sectionTitle")
         layout.addWidget(title)
-
-        self.tabs = QTabWidget()
-        
-        # ── Tab 1: Nursing Notes ──
-        self.notes_tab = QWidget()
-        nl = QVBoxLayout(self.notes_tab)
-        nl.setContentsMargins(10,10,10,10)
         
         header_row = QHBoxLayout()
         header_row.addStretch()
@@ -196,7 +189,7 @@ class NursingTab(QWidget):
         self.add_btn.setObjectName("primaryBtn")
         self.add_btn.clicked.connect(self._add_note)
         header_row.addWidget(self.add_btn)
-        nl.addLayout(header_row)
+        layout.addLayout(header_row)
 
         f_row = QHBoxLayout()
         self.search_box = QLineEdit()
@@ -208,10 +201,10 @@ class NursingTab(QWidget):
         self.status_cb.currentIndexChanged.connect(self.load_data)
         f_row.addWidget(self.search_box, 2)
         f_row.addWidget(self.status_cb)
-        nl.addLayout(f_row)
+        layout.addLayout(f_row)
 
         self.count_lbl = QLabel(); self.count_lbl.setObjectName("countLabel")
-        nl.addWidget(self.count_lbl)
+        layout.addWidget(self.count_lbl)
 
         self.table = QTableWidget()
         cols = ["Bệnh nhân","Điều dưỡng","Thời gian","Nhiệt độ","Huyết áp","Mạch","SpO2","Tình trạng"]
@@ -222,99 +215,15 @@ class NursingTab(QWidget):
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
         self.table.verticalHeader().setVisible(False)
-        nl.addWidget(self.table)
+        layout.addWidget(self.table)
 
         a_row = QHBoxLayout()
         self.edit_btn = QPushButton("✏️ Sửa"); self.edit_btn.setObjectName("actionBtn")
         self.edit_btn.clicked.connect(self._edit_note)
         a_row.addWidget(self.edit_btn); a_row.addStretch()
-        nl.addLayout(a_row)
+        layout.addLayout(a_row)
 
-        self.tabs.addTab(self.notes_tab, "📝 Ghi chú chăm sóc")
-
-        # ── Tab 2: Medical Orders (To-do List) ──
-        self.orders_tab = QWidget()
-        ol = QVBoxLayout(self.orders_tab)
-        ol.setContentsMargins(10,10,10,10)
-        
-        ol_f_row = QHBoxLayout()
-        self.o_search = QLineEdit()
-        self.o_search.setPlaceholderText("🔍  Tìm theo tên bệnh nhân")
-        self.o_search.textChanged.connect(self.load_orders)
-        self.o_status = QComboBox()
-        self.o_status.addItems(["Tất cả","Pending","Done","Cancelled"])
-        self.o_status.currentIndexChanged.connect(self.load_orders)
-        ol_f_row.addWidget(self.o_search, 2)
-        ol_f_row.addWidget(self.o_status)
-        ol.addLayout(ol_f_row)
-
-        self.o_table = QTableWidget()
-        o_cols = ["ID", "Thời gian", "Bệnh nhân", "Bác sĩ", "Loại y lệnh", "Nội dung", "Trạng thái", "Hành động"]
-        self.o_table.setColumnCount(len(o_cols))
-        self.o_table.setHorizontalHeaderLabels(o_cols)
-        self.o_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.o_table.horizontalHeader().setSectionResizeMode(7, QHeaderView.ResizeMode.ResizeToContents)
-        self.o_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self.o_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.o_table.setAlternatingRowColors(True)
-        self.o_table.verticalHeader().setVisible(False)
-        ol.addWidget(self.o_table)
-        
-        self.tabs.addTab(self.orders_tab, "📋 Y lệnh (To-do List)")
-        
-        layout.addWidget(self.tabs)
-        
-        self.tabs.currentChanged.connect(self._on_tab_change)
         self.load_data()
-        self.load_orders()
-
-    def _on_tab_change(self, idx):
-        if idx == 0:
-            self.load_data()
-        else:
-            self.load_orders()
-
-    def load_orders(self):
-        search = self.o_search.text().strip()
-        status = self.o_status.currentText()
-        if status == "Tất cả": status = ""
-        
-        rows = dao.get_medical_orders(search, status)
-        self.o_table.setRowCount(len(rows))
-        
-        from PyQt6.QtGui import QColor
-        for r, o in enumerate(rows):
-            vals = [
-                str(o["id"]), o["order_time"], f"{o['patient_code']} - {o['patient_name']}",
-                o["doctor_name"], o["order_type"], o["description"], o["status"]
-            ]
-            for c, v in enumerate(vals):
-                item = QTableWidgetItem(str(v))
-                if c == 6:
-                    if o["status"] == "Pending": item.setForeground(QColor("#c53030"))
-                    elif o["status"] == "Done": item.setForeground(QColor("#276749"))
-                self.o_table.setItem(r, c, item)
-            
-            # Hành động
-            if o["status"] == "Pending":
-                btn = QPushButton("✅ Hoàn thành")
-                btn.setObjectName("actionBtn")
-                btn.setStyleSheet("background:#c6f6d5; color:#22543d; border-radius:4px; padding:4px;")
-                btn.clicked.connect(lambda _, oid=o["id"]: self._mark_order_done(oid))
-                self.o_table.setCellWidget(r, 7, btn)
-            else:
-                self.o_table.setItem(r, 7, QTableWidgetItem(o["execution_time"] or ""))
-
-    def _mark_order_done(self, oid):
-        reply = QMessageBox.question(self, "Xác nhận", "Đánh dấu y lệnh này đã hoàn thành?", 
-                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
-        if reply == QMessageBox.StandardButton.Yes:
-            user = auth.get_current_user()
-            nurse_id = dao.get_staff_id_by_user_id(user["id"]) if user else None
-            dao.update_medical_order_status(oid, "Done", nurse_id=nurse_id)
-            self.load_orders()
-
-
 
     def load_data(self):
         search = self.search_box.text().strip()

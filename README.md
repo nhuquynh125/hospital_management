@@ -26,7 +26,6 @@ hospital_management/
 │   ├── room_tab.py                # 🏠 Quản lý phòng/giường bệnh
 │   ├── medicine_tab.py            # 💊 Thuốc, kê đơn
 │
-│   ├── chatbot_tab.py             # 💬 Chatbot AI (Google Gemini API)
 │   └── settings_tab.py            # ⚙️ Cài đặt, Backup/Restore, Đổi mật khẩu
 │
 └── backups/                       # Thư mục backup database
@@ -82,7 +81,6 @@ Hệ thống phân quyền chặt chẽ (RBAC) với 14 vai trò. Mỗi vai trò
    - Viện phí & Thống kê tài chính
    - Báo cáo Điều hành (Dashboard đặc biệt cho Giám đốc)
    - Dự báo Lượng bệnh (AI Predictive Analytics)
-   - Chatbot AI
 
 3. **Bác sĩ (Doctor)**
    - Quản lý Bệnh nhân & Xem lịch sử khám
@@ -90,20 +88,20 @@ Hệ thống phân quyền chặt chẽ (RBAC) với 14 vai trò. Mỗi vai trò
    - Bệnh án / Khám bệnh (Chẩn đoán, Y lệnh)
    - Thuốc & Kê đơn
    - Xem kết quả Xét nghiệm
-   - Thống kê, Chatbot AI
+   - Thống kê
 
 4. **Y tá / Điều dưỡng (Nurse)**
    - Quản lý Bệnh nhân & Lịch hẹn
    - Bệnh án (Ghi nhận sinh hiệu, Chăm sóc điều dưỡng)
    - Xem Y lệnh từ bác sĩ
    - Quản lý Phòng / Giường bệnh
-   - Thống kê, Chatbot AI
+   - Thống kê
 
 5. **Trưởng khoa (Department Head)**
    - Quản lý Nhân viên trong khoa, Lịch trực (Shift Schedule)
    - Quản lý Bệnh nhân, Lịch hẹn
    - Bệnh án, Thuốc & Kê đơn, Xét nghiệm
-   - Thống kê, Chatbot AI
+   - Thống kê
 
 6. **Lễ tân (Receptionist)**
    - Quản lý Bệnh nhân (Tiếp nhận, đăng ký mới)
@@ -114,11 +112,11 @@ Hệ thống phân quyền chặt chẽ (RBAC) với 14 vai trò. Mỗi vai trò
 7. **Dược sĩ (Pharmacist)**
    - Quản lý Kho Thuốc (Nhập/Xuất, Kho thông minh)
    - Duyệt đơn thuốc & Cấp phát thuốc
-   - Thống kê kho thuốc, Chatbot AI
+   - Thống kê kho thuốc
 
 8. **Xét nghiệm viên (Lab Technician)**
    - Nhận yêu cầu và cập nhật kết quả Xét nghiệm
-   - Thống kê Xét nghiệm, Chatbot AI
+   - Thống kê Xét nghiệm
 
 9. **Kế toán (Accountant)**
    - Quản lý Viện phí & Thanh toán
@@ -187,22 +185,10 @@ Hệ thống phân quyền chặt chẽ (RBAC) với 14 vai trò. Mỗi vai trò
 |-----------|-------|------|
 | Dashboard Báo cáo Điều hành | Hệ thống biểu đồ trực quan (Matplotlib) theo dõi doanh thu và KPI bệnh viện. | Nâng cao |
 | AI Dự báo Lượng bệnh nhân | Phân tích xu hướng để dự báo lượng bệnh trong tương lai giúp sắp xếp nhân sự. | AI |
-| Chatbot Y tế (Google Gemini) | Trợ lý ảo thông minh giải đáp bệnh lý, thông tin thuốc và quy trình y tế. | AI |
 
 ---
 
-## 💬 Cấu hình Chatbot AI
 
-1. Lấy API Key miễn phí tại [aistudio.google.com](https://aistudio.google.com/app/apikey)
-2. Tạo file `.env` ở thư mục gốc dự án với nội dung:
-   ```
-   GEMINI_API_KEY=your_key_here
-   GEMINI_MODEL=gemini-2.0-flash   # tuỳ chọn
-   ```
-3. Chạy lại ứng dụng — Chatbot tự động đọc key từ `.env`.
-4. Bắt đầu đặt câu hỏi về thuốc, bệnh, quy trình y tế!
-
----
 
 ## 📦 Yêu cầu hệ thống
 - Python 3.9+
