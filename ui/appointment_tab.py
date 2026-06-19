@@ -33,7 +33,6 @@ class AppointmentFormDialog(QDialog):
         self.is_followup = is_followup
         self.patients   = dao.get_all_patients()
         self.doctors    = dao.get_doctors()
-        self.rooms      = dao.get_all_rooms()
         title = "Lịch tái khám" if is_followup else ("Sửa lịch hẹn" if self.is_edit else "Đặt lịch hẹn mới")
         self.setWindowTitle(title)
         self.setMinimumWidth(480)
@@ -73,13 +72,6 @@ class AppointmentFormDialog(QDialog):
             spec = f" ({d['specialization']})" if d["specialization"] else ""
             self.f_doctor.addItem(f"{d['full_name']}{spec}", d["id"])
 
-        # Room selector
-        self.f_room = QComboBox()
-        self.f_room.addItem("-- Chọn phòng khám --", None)
-        for r in self.rooms:
-            if r["room_type"] == "Khám" or r["status"] == "Trống":
-                self.f_room.addItem(f"Phòng {r['room_number']} — {r['room_type']}", r["id"])
-
         self.f_date = QDateEdit()
         self.f_date.setCalendarPopup(True)
         self.f_date.setDisplayFormat("dd/MM/yyyy")
@@ -102,7 +94,6 @@ class AppointmentFormDialog(QDialog):
 
         form.addRow("Bệnh nhân *:", self.f_patient)
         form.addRow("Bác sĩ *:",    self.f_doctor)
-        form.addRow("Phòng khám:",  self.f_room)
         form.addRow("Ngày hẹn *:",  self.f_date)
         form.addRow("Giờ hẹn *:",   self.f_time)
         form.addRow("Lý do:",       self.f_reason)
@@ -128,10 +119,6 @@ class AppointmentFormDialog(QDialog):
         for i in range(self.f_doctor.count()):
             if self.f_doctor.itemData(i) == a["doctor_id"]:
                 self.f_doctor.setCurrentIndex(i); break
-        if a["room_id"]:
-            for i in range(self.f_room.count()):
-                if self.f_room.itemData(i) == a["room_id"]:
-                    self.f_room.setCurrentIndex(i); break
         if a["appointment_date"]:
             d = QDate.fromString(a["appointment_date"], "yyyy-MM-dd")
             if d.isValid(): self.f_date.setDate(d)
@@ -155,7 +142,6 @@ class AppointmentFormDialog(QDialog):
         self.result_data = {
             "patient_id":       patient_id,
             "doctor_id":        doctor_id,
-            "room_id":          self.f_room.currentData(),
             "appointment_date": self.f_date.date().toString("yyyy-MM-dd"),
             "appointment_time": self.f_time.time().toString("HH:mm"),
             "reason":           self.f_reason.text().strip(),
@@ -261,7 +247,7 @@ class AppointmentTab(QWidget):
 
         # Table
         self.table = QTableWidget()
-        cols = ["Mã", "Bệnh nhân", "Bác sĩ", "Phòng", "Ngày hẹn",
+        cols = ["Mã", "Bệnh nhân", "Bác sĩ", "Ngày hẹn",
                 "Giờ", "Lý do", "Tái khám", "Trạng thái"]
         self.table.setColumnCount(len(cols))
         self.table.setHorizontalHeaderLabels(cols)
@@ -301,13 +287,13 @@ class AppointmentTab(QWidget):
         for r, a in enumerate(rows):
             is_fu = "🔁 Có" if a["is_followup"] else ""
             vals = [str(a["id"]), a["patient_name"] or "", a["doctor_name"] or "",
-                    a["room_number"] or "", a["appointment_date"] or "",
+                    a["appointment_date"] or "",
                     a["appointment_time"] or "", a["reason"] or "",
                     is_fu, a["status"] or ""]
             for c, v in enumerate(vals):
                 item = QTableWidgetItem(v)
                 item.setData(Qt.ItemDataRole.UserRole.value, a["id"])
-                if c == 8:  # status column colour
+                if c == 7:  # status column colour
                     bg, fg = STATUS_COLORS.get(v, ("#ffffff", "#000000"))
                     item.setBackground(QColor(bg))
                     item.setForeground(QColor(fg))

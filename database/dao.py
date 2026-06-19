@@ -390,9 +390,6 @@ def get_dashboard_stats():
             "SELECT COUNT(*) FROM appointments WHERE appointment_date=? AND status!='Huỷ'",
             (today,)
         ).fetchone()[0],
-        "available_rooms": conn.execute(
-            "SELECT COUNT(*) FROM rooms WHERE status='Trống'"
-        ).fetchone()[0],
         "low_stock_medicines": conn.execute(
             "SELECT COUNT(*) FROM medicines WHERE stock_qty <= min_stock AND is_active=1"
         ).fetchone()[0],
@@ -410,12 +407,10 @@ def get_all_appointments(search="", status_filter="", date_filter=None):
         SELECT a.*,
                p.full_name  AS patient_name,
                p.patient_code,
-               s.full_name  AS doctor_name,
-               r.room_number
+               s.full_name  AS doctor_name
         FROM appointments a
         LEFT JOIN patients p ON a.patient_id = p.id
         LEFT JOIN staff    s ON a.doctor_id  = s.id
-        LEFT JOIN rooms    r ON a.room_id    = r.id
         WHERE 1=1
     """
     params = []
@@ -438,11 +433,10 @@ def get_all_appointments(search="", status_filter="", date_filter=None):
 def get_appointment_by_id(appt_id: int):
     conn = get_connection()
     row = conn.execute("""
-        SELECT a.*, p.full_name AS patient_name, s.full_name AS doctor_name, r.room_number
+        SELECT a.*, p.full_name AS patient_name, s.full_name AS doctor_name
         FROM appointments a
         LEFT JOIN patients p ON a.patient_id=p.id
         LEFT JOIN staff    s ON a.doctor_id =s.id
-        LEFT JOIN rooms    r ON a.room_id=r.id
         WHERE a.id=?
     """, (appt_id,)).fetchone()
     conn.close()
@@ -453,10 +447,10 @@ def add_appointment(data: dict) -> int:
     conn = get_connection()
     cur = conn.execute("""
         INSERT INTO appointments
-            (patient_id, doctor_id, room_id, appointment_date, appointment_time,
+            (patient_id, doctor_id, appointment_date, appointment_time,
              reason, status, is_followup, parent_appointment_id, notes)
-        VALUES (?,?,?,?,?,?,?,?,?,?)
-    """, (data["patient_id"], data["doctor_id"], data.get("room_id"),
+        VALUES (?,?,?,?,?,?,?,?,?)
+    """, (data["patient_id"], data["doctor_id"],
           data["appointment_date"], data["appointment_time"],
           data.get("reason"), data.get("status", "Chờ"),
           data.get("is_followup", 0), data.get("parent_appointment_id"),
@@ -471,10 +465,10 @@ def update_appointment(appt_id: int, data: dict):
     conn = get_connection()
     conn.execute("""
         UPDATE appointments SET
-            patient_id=?, doctor_id=?, room_id=?, appointment_date=?,
+            patient_id=?, doctor_id=?, appointment_date=?,
             appointment_time=?, reason=?, status=?, notes=?
         WHERE id=?
-    """, (data["patient_id"], data["doctor_id"], data.get("room_id"),
+    """, (data["patient_id"], data["doctor_id"],
           data["appointment_date"], data["appointment_time"],
           data.get("reason"), data.get("status"), data.get("notes"), appt_id))
     conn.commit()
@@ -500,71 +494,6 @@ def auto_reschedule_missed_appointments():
           AND appointment_date < ?
     """
     cur.execute(query, (today_str, today_str))
-    conn.commit()
-    conn.close()
-
-
-# ═══════════════════════════════════════════════════════════
-#  ROOMS
-# ═══════════════════════════════════════════════════════════
-def get_all_rooms(type_filter="", status_filter=""):
-    conn = get_connection()
-    query = "SELECT * FROM rooms WHERE 1=1"
-    params = []
-    if type_filter:
-        query += " AND room_type=?"
-        params.append(type_filter)
-    if status_filter:
-        query += " AND status=?"
-        params.append(status_filter)
-    query += " ORDER BY floor, room_number"
-    rows = conn.execute(query, params).fetchall()
-    conn.close()
-    return rows
-
-
-def get_room_by_id(room_id: int):
-    conn = get_connection()
-    row = conn.execute("SELECT * FROM rooms WHERE id=?", (room_id,)).fetchone()
-    conn.close()
-    return row
-
-
-def add_room(data: dict) -> int:
-    conn = get_connection()
-    cur = conn.execute("""
-        INSERT INTO rooms (room_number, room_type, capacity, floor, status, notes)
-        VALUES (?,?,?,?,?,?)
-    """, (data["room_number"], data["room_type"], data.get("capacity", 1),
-          data.get("floor", 1), data.get("status", "Trống"), data.get("notes")))
-    conn.commit()
-    rid = cur.lastrowid
-    conn.close()
-    return rid
-
-
-def update_room(room_id: int, data: dict):
-    conn = get_connection()
-    conn.execute("""
-        UPDATE rooms SET room_number=?, room_type=?, capacity=?, floor=?, status=?, notes=?
-        WHERE id=?
-    """, (data["room_number"], data["room_type"], data.get("capacity", 1),
-          data.get("floor", 1), data.get("status", "Trống"),
-          data.get("notes"), room_id))
-    conn.commit()
-    conn.close()
-
-
-def update_room_status(room_id: int, status: str):
-    conn = get_connection()
-    conn.execute("UPDATE rooms SET status=? WHERE id=?", (status, room_id))
-    conn.commit()
-    conn.close()
-
-
-def delete_room(room_id: int):
-    conn = get_connection()
-    conn.execute("DELETE FROM rooms WHERE id=?", (room_id,))
     conn.commit()
     conn.close()
 

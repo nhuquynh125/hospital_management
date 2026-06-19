@@ -61,7 +61,6 @@ class ExecutiveReportTab(QWidget):
                 <li><b>Tổng số bệnh nhân:</b> {stats['total_patients']}</li>
                 <li><b>Tổng số nhân sự:</b> {stats['total_staff']}</li>
                 <li><b>Số ca khám hôm nay:</b> {stats['today_appointments']} ca</li>
-                <li><b>Số giường trống:</b> {stats['available_rooms']} giường</li>
             </ul>
             
             <h3 style="color: #2b6cb0;">💰 Tình hình Tài chính (Dự kiến)</h3>

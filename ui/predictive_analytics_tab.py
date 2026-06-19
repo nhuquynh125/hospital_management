@@ -42,7 +42,7 @@ class PredictiveAnalyticsTab(QWidget):
         cards_layout = QHBoxLayout()
         self.trend_card = self._create_card("📈 Xu hướng", "Tăng 12%", "So với tháng trước")
         self.peak_card = self._create_card("⚠️ Ngày cao điểm dự kiến", "Thứ Hai tới", "Cần tăng cường nhân sự")
-        self.dept_card = self._create_card("🏥 Khoa quá tải dự kiến", "Khoa Nội", "Cần thêm 3 giường")
+        self.dept_card = self._create_card("🏥 Khoa quá tải dự kiến", "Khoa Nội", "Cần thêm nhân sự")
         cards_layout.addWidget(self.trend_card)
         cards_layout.addWidget(self.peak_card)
         cards_layout.addWidget(self.dept_card)

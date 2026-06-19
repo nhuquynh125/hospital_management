@@ -159,17 +159,6 @@ def init_db():
         notes           TEXT
     )""")
 
-    # ── Rooms ─────────────────────────────────────────────────────
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS rooms (
-        id          INTEGER PRIMARY KEY AUTOINCREMENT,
-        room_number TEXT UNIQUE NOT NULL,
-        room_type   TEXT NOT NULL CHECK(room_type IN ('Thường','VIP','ICU','Phẫu thuật','Khám')),
-        capacity    INTEGER DEFAULT 1,
-        floor       INTEGER DEFAULT 1,
-        status      TEXT DEFAULT 'Trống' CHECK(status IN ('Trống','Đang dùng','Bảo trì')),
-        notes       TEXT
-    )""")
 
     # ── Appointments ──────────────────────────────────────────────
     cur.execute("""
@@ -177,7 +166,6 @@ def init_db():
         id                    INTEGER PRIMARY KEY AUTOINCREMENT,
         patient_id            INTEGER NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
         doctor_id             INTEGER NOT NULL REFERENCES staff(id),
-        room_id               INTEGER REFERENCES rooms(id),
         appointment_date      TEXT NOT NULL,
         appointment_time      TEXT NOT NULL,
         reason                TEXT,
@@ -273,7 +261,7 @@ def init_db():
     CREATE TABLE IF NOT EXISTS bill_items (
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
         bill_id     INTEGER NOT NULL REFERENCES bills(id) ON DELETE CASCADE,
-        item_type   TEXT NOT NULL CHECK(item_type IN ('Khám','Thuốc','Xét nghiệm','Phòng','Dịch vụ')),
+        item_type   TEXT NOT NULL CHECK(item_type IN ('Khám','Thuốc','Xét nghiệm','Dịch vụ')),
         description TEXT NOT NULL,
         quantity    INTEGER DEFAULT 1,
         unit_price  REAL DEFAULT 0,
@@ -440,7 +428,7 @@ def _seed_rbac(cur, conn):
 
     permissions = [
         "patients", "staff", "appointments", "medical_records", "medical_orders",
-        "medicines", "pharmacy", "rooms", "billing", "lab", "reports",
+        "medicines", "pharmacy", "billing", "lab", "reports",
         "settings", "ai", "audit_logs",
         "settings.personal_info", "settings.leave", "settings.salary_view",
         "settings.salary_config", "settings.security"
@@ -451,12 +439,12 @@ def _seed_rbac(cur, conn):
     role_perms = {
         "admin": ["staff", "settings", "audit_logs", "billing"], # Billing just to see issues, no medical records
         "doctor": ["patients", "appointments", "medical_records", "medicines", "lab", "reports", "ai"],
-        "nurse": ["patients", "appointments", "medical_records", "medical_orders", "rooms", "reports", "ai"],
-        "receptionist": ["patients", "appointments", "rooms", "billing", "reports"],
+        "nurse": ["patients", "appointments", "medical_records", "medical_orders", "reports", "ai"],
+        "receptionist": ["patients", "appointments", "billing", "reports"],
         "pharmacist": ["medicines", "pharmacy", "reports", "ai"],
         "accountant": ["billing", "reports"],
         "lab_technician": ["lab", "reports", "ai"],
-        "director": ["patients", "staff", "appointments", "rooms", "reports", "ai", "billing"],
+        "director": ["patients", "staff", "appointments", "reports", "ai", "billing"],
         "cashier": ["billing"],
         "department_head": ["patients", "appointments", "medical_records", "medicines", "lab", "reports", "ai", "staff"],
         "hr_manager": ["staff",
@@ -504,20 +492,20 @@ def _seed_users(cur, conn):
     role_map = {row['role_name']: row['id'] for row in cur.fetchall()}
 
     demo_accounts = [
-        ("admin",        "admin123",   "Quản trị viên",         "admin"),
-        ("bacsi01",      "doctor123",  "BS. Nguyễn Văn An",     "doctor"),
-        ("nurse01",      "nurse123",   "ĐD. Trần Thị Bình",     "nurse"),
-        ("letan01",      "recept123",  "Lễ tân Lê Văn Cường",   "receptionist"),
-        ("duocsi01",     "pharma123",  "DS. Phạm Thị Dung",     "pharmacist"),
-        ("ketoan01",     "acc123",     "KT. Ngô Văn Em",        "accountant"),
-        ("xetnghiem01",  "lab123",     "KTV. Hoàng Thị Phương", "lab_technician"),
-        ("giamdoc",      "director123","GĐ. Vũ Đình Quang",     "director"),
-        ("thungan01",    "cashier123", "TN. Nguyễn Thị Lệ",     "cashier"),
-        ("truongkhoa01", "head123",    "TK. Phạm Văn B",        "department_head"),
-        ("nhansu01",     "hr123",      "HR. Lê Thị C",          "hr_manager"),
-        ("baove01",      "guard123",   "BV. Lê Văn Tuấn",       "security_guard"),
-        ("laixe01",      "driver123",  "LX. Trần Hữu Đức",      "ambulance_driver"),
-        ("vesinh01",     "janitor123", "VS. Nguyễn Thị Hạnh",   "janitor"),
+        ("admin",        "123456",   "Quản trị viên",         "admin"),
+        ("bacsi01",      "123456",  "BS. Nguyễn Văn An",     "doctor"),
+        ("nurse01",      "123456",   "ĐD. Trần Thị Bình",     "nurse"),
+        ("letan01",      "123456",  "Lễ tân Lê Văn Cường",   "receptionist"),
+        ("duocsi01",     "123456",  "DS. Phạm Thị Dung",     "pharmacist"),
+        ("ketoan01",     "123456",     "KT. Ngô Văn Em",        "accountant"),
+        ("xetnghiem01",  "123456",     "KTV. Hoàng Thị Phương", "lab_technician"),
+        ("giamdoc",      "123456","GĐ. Vũ Đình Quang",     "director"),
+        ("thungan01",    "123456", "TN. Nguyễn Thị Lệ",     "cashier"),
+        ("truongkhoa01", "123456",    "TK. Phạm Văn B",        "department_head"),
+        ("nhansu01",     "123456",      "HR. Lê Thị C",          "hr_manager"),
+        ("baove01",      "123456",   "BV. Lê Văn Tuấn",       "security_guard"),
+        ("laixe01",      "123456",  "LX. Trần Hữu Đức",      "ambulance_driver"),
+        ("vesinh01",     "123456", "VS. Nguyễn Thị Hạnh",   "janitor"),
     ]
     for username, password, full_name, role_name in demo_accounts:
         hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
@@ -582,18 +570,6 @@ def _seed_data(cur, conn):
             phone, address, blood_type, insurance_id, insurance_exp, emergency_contact, allergies)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
     """, patients)
-
-    # Rooms
-    rooms = [
-        ("P101","Khám",      4,1,"Trống"), ("P102","Khám",      4,1,"Trống"),
-        ("P201","Thường",    2,2,"Đang dùng"), ("P202","Thường",2,2,"Trống"),
-        ("V301","VIP",       1,3,"Trống"), ("ICU01","ICU",      2,1,"Đang dùng"),
-        ("PT01","Phẫu thuật",1,1,"Trống"),
-    ]
-    cur.executemany("""
-        INSERT INTO rooms (room_number, room_type, capacity, floor, status)
-        VALUES (?,?,?,?,?)
-    """, rooms)
 
     # Medicines
     meds = [

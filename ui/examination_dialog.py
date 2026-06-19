@@ -550,7 +550,7 @@ class PrescriptionTab(QWidget):
 # ═══════════════════════════════════════════════════════════
 class SaveSuccessDialog(QDialog):
     def __init__(self, summary, patient, exam_data, rx_data, lab_data, doctor_name,
-                 department=None, room=None, record_id=None, presc_id=None, parent=None):
+                 department=None, record_id=None, presc_id=None, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Lưu thành công")
         self.setMinimumWidth(400)
@@ -560,7 +560,6 @@ class SaveSuccessDialog(QDialog):
         self.lab_data    = lab_data
         self.doctor_name = doctor_name
         self.department  = department or "—"
-        self.room        = room or "—"
         self.phieu_code  = f"PK{datetime.now().year}{(record_id or 0):04d}"
         self.don_code    = f"DT{datetime.now().year}{(presc_id or 0):04d}" if presc_id else None
 
@@ -700,11 +699,7 @@ class SaveSuccessDialog(QDialog):
                     <td style="width:15%;"><b>Khoa:</b></td>
                     <td style="width:35%;">{self.department}</td>
                 </tr>
-                <tr>
-                    <td><b>Phòng khám:</b></td>
-                    <td>{self.room}</td>
-                    <td></td><td></td>
-                </tr>
+
             </table>
 
             <div class="section-title">CHỈ SỐ SINH TỒN</div>
@@ -1036,15 +1031,11 @@ class ExaminationDialog(QDialog):
         # Resolve users.id -> staff.id so FK columns point to the right row
         doc_staff_id = dao.get_staff_id_by_user_id(user["id"]) if user else None
 
-        # Khoa & phòng khám để in lên phiếu
+        # Khoa để in lên phiếu
         department = None
         if doc_staff_id:
             staff_row = dao.get_staff_by_id(doc_staff_id)
             department = staff_row["dept_name"] if staff_row else None
-        room = None
-        if self.appointment_id:
-            appt = dao.get_appointment_by_id(self.appointment_id)
-            room = appt["room_number"] if appt else None
 
         # 2. Save medical record
         record_data = {
@@ -1105,7 +1096,7 @@ class ExaminationDialog(QDialog):
         doc_name = user['full_name'] if user else '—'
         dialog = SaveSuccessDialog(
             summary, self.patient, exam_data, rx_data, lab_data, doc_name,
-            department=department, room=room,
+            department=department,
             record_id=record_id, presc_id=presc_id, parent=self
         )
         dialog.exec()

@@ -12,7 +12,7 @@ import core.auth as auth
 
 PAYMENT_METHODS = ["Tiền mặt","Chuyển khoản","BHYT","Thẻ"]
 BILL_STATUSES   = ["Chưa thanh toán","Đã thanh toán","Một phần","Huỷ"]
-ITEM_TYPES      = ["Khám","Thuốc","Xét nghiệm","Phòng","Dịch vụ"]
+ITEM_TYPES      = ["Khám","Thuốc","Xét nghiệm","Dịch vụ"]
 
 STATUS_COLORS = {
     "Chưa thanh toán": ("#fff3cd","#856404"),

@@ -23,7 +23,7 @@ hospital_management/
 │   ├── patient_tab.py             # 👥 Quản lý bệnh nhân
 │   ├── staff_tab.py               # 👨‍⚕️ Quản lý nhân viên
 │   ├── appointment_tab.py         # 🗓️ Quản lý lịch hẹn & tái khám
-│   ├── room_tab.py                # 🏠 Quản lý phòng/giường bệnh
+
 │   ├── medicine_tab.py            # 💊 Thuốc, kê đơn
 │
 │   └── settings_tab.py            # ⚙️ Cài đặt, Backup/Restore, Đổi mật khẩu
@@ -48,20 +48,20 @@ python main.py
 ### Bước 3 — Đăng nhập demo
 | Username    | Password    | Vai trò         |
 |-------------|-------------|-----------------|
-| admin       | admin123    | Quản trị viên   |
-| bacsi01     | doctor123   | Bác sĩ          |
-| nurse01     | nurse123    | Y tá / Điều dưỡng|
-| letan01     | recept123   | Lễ tân          |
-| duocsi01    | pharma123   | Dược sĩ         |
-| ketoan01    | acc123      | Kế toán         |
-| xetnghiem01 | lab123      | Xét nghiệm viên |
-| giamdoc     | director123 | Giám đốc        |
-| thungan01   | cashier123  | Thu ngân        |
-| truongkhoa01| head123     | Trưởng khoa     |
-| nhansu01    | hr123       | Quản lý nhân sự |
-| baove01     | guard123    | Bảo vệ          |
-| laixe01     | driver123   | Lái xe cứu thương|
-| vesinh01    | janitor123  | Nhân viên vệ sinh|
+| admin       | 123456      | Quản trị viên   |
+| bacsi01     | 123456      | Bác sĩ          |
+| nurse01     | 123456      | Y tá / Điều dưỡng|
+| letan01     | 123456      | Lễ tân          |
+| duocsi01    | 123456      | Dược sĩ         |
+| ketoan01    | 123456      | Kế toán         |
+| xetnghiem01 | 123456      | Xét nghiệm viên |
+| giamdoc     | 123456      | Giám đốc        |
+| thungan01   | 123456      | Thu ngân        |
+| truongkhoa01| 123456      | Trưởng khoa     |
+| nhansu01    | 123456      | Quản lý nhân sự |
+| baove01     | 123456      | Bảo vệ          |
+| laixe01     | 123456      | Lái xe cứu thương|
+| vesinh01    | 123456      | Nhân viên vệ sinh|
 
 ---
 
@@ -77,7 +77,7 @@ Hệ thống phân quyền chặt chẽ (RBAC) với 14 vai trò. Mỗi vai trò
    
 2. **Giám đốc (Director)**
    - Quản lý Bệnh nhân & Nhân viên
-   - Quản lý Lịch hẹn & Phòng/Giường bệnh
+   - Quản lý Lịch hẹn
    - Viện phí & Thống kê tài chính
    - Báo cáo Điều hành (Dashboard đặc biệt cho Giám đốc)
    - Dự báo Lượng bệnh (AI Predictive Analytics)
@@ -94,7 +94,7 @@ Hệ thống phân quyền chặt chẽ (RBAC) với 14 vai trò. Mỗi vai trò
    - Quản lý Bệnh nhân & Lịch hẹn
    - Bệnh án (Ghi nhận sinh hiệu, Chăm sóc điều dưỡng)
    - Xem Y lệnh từ bác sĩ
-   - Quản lý Phòng / Giường bệnh
+
    - Thống kê
 
 5. **Trưởng khoa (Department Head)**
@@ -106,7 +106,7 @@ Hệ thống phân quyền chặt chẽ (RBAC) với 14 vai trò. Mỗi vai trò
 6. **Lễ tân (Receptionist)**
    - Quản lý Bệnh nhân (Tiếp nhận, đăng ký mới)
    - Quản lý Lịch hẹn
-   - Quản lý Phòng / Giường (Phân phòng)
+
    - Viện phí (Xem thông tin), Thống kê cơ bản
 
 7. **Dược sĩ (Pharmacist)**
@@ -177,7 +177,7 @@ Hệ thống phân quyền chặt chẽ (RBAC) với 14 vai trò. Mỗi vai trò
 | Bệnh án & Y lệnh (Medical Orders)| Bác sĩ chẩn đoán, ra y lệnh. Y tá nhận lệnh, đo sinh hiệu và thực thi. | Nâng cao |
 | Kho Thuốc & Kê đơn | Cảnh báo tồn kho, hạn sử dụng. Kê đơn điện tử liên thông kho dược. | Nâng cao |
 | Xét nghiệm (Lab Tests) | Chỉ định cận lâm sàng, nhập kết quả dạng text hoặc đính kèm file ảnh/PDF.| Nâng cao |
-| Quản lý Phòng/Giường bệnh | Lưới hiển thị dạng Card (thẻ), đổi trạng thái phòng (trống, bảo trì) bằng 1 click.| Nâng cao |
+
 | Viện phí & Thanh toán | Tính toán chi phí khám/thuốc/dịch vụ tự động, in hóa đơn nhanh chóng. | Nâng cao |
 
 ### 🤖 Phần 3 — Trí tuệ Nhân tạo (AI) & Báo cáo

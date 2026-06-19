@@ -22,53 +22,7 @@ def generate_data():
         cur.execute(f"DELETE FROM {t}")
         cur.execute(f"DELETE FROM sqlite_sequence WHERE name='{t}'") # Reset AUTOINCREMENT
     
-    # 1. TẠO 400 GIƯỜNG BỆNH
-    # Xóa phòng cũ
-    cur.execute("DELETE FROM rooms")
-    cur.execute("DELETE FROM sqlite_sequence WHERE name='rooms'")
-    
-    rooms = []
-    # 400 giường = 100 phòng x 4 giường, hoặc các loại phòng khác nhau
-    # Ta sẽ tạo: 50 phòng Thường (4 giường) = 200, 20 phòng Thường (3 giường) = 60, 20 phòng VIP (1 giường) = 20, 10 phòng ICU (2 giường) = 20, 50 phòng Khám (2 giường) = 100. Tổng: 400 giường.
-    room_number = 101
-    floor = 1
-    for i in range(50):
-        rooms.append((f"P{room_number}", "Thường", 4, floor, "Trống"))
-        room_number += 1
-        if room_number % 100 > 20: 
-            floor += 1
-            room_number = floor * 100 + 1
-            
-    for i in range(20):
-        rooms.append((f"P{room_number}", "Thường", 3, floor, "Trống"))
-        room_number += 1
-        if room_number % 100 > 20: 
-            floor += 1
-            room_number = floor * 100 + 1
-            
-    for i in range(20):
-        rooms.append((f"V{room_number}", "VIP", 1, floor, "Trống"))
-        room_number += 1
-        if room_number % 100 > 20: 
-            floor += 1
-            room_number = floor * 100 + 1
-            
-    for i in range(10):
-        rooms.append((f"ICU{room_number}", "ICU", 2, floor, "Trống"))
-        room_number += 1
-        if room_number % 100 > 20: 
-            floor += 1
-            room_number = floor * 100 + 1
-            
-    for i in range(50):
-        rooms.append((f"K{room_number}", "Khám", 2, floor, "Trống"))
-        room_number += 1
-        if room_number % 100 > 20: 
-            floor += 1
-            room_number = floor * 100 + 1
-            
-    cur.executemany("INSERT INTO rooms (room_number, room_type, capacity, floor, status) VALUES (?,?,?,?,?)", rooms)
-    
+
     # Lấy danh sách nhân viên, bệnh nhân, thuốc...
     doctors = [r['id'] for r in cur.execute("SELECT id FROM staff WHERE position='Bác sĩ'").fetchall()]
     nurses = [r['id'] for r in cur.execute("SELECT id FROM staff WHERE position='Y tá / Điều dưỡng'").fetchall()]
@@ -78,7 +32,7 @@ def generate_data():
     
     patients = [r['id'] for r in cur.execute("SELECT id FROM patients").fetchall()]
     
-    kham_rooms = [r['id'] for r in cur.execute("SELECT id FROM rooms WHERE room_type='Khám'").fetchall()]
+
     
     meds = [r['id'] for r in cur.execute("SELECT id FROM medicines").fetchall()]
     
@@ -115,15 +69,15 @@ def generate_data():
         for _ in range(num_appts):
             p_id = random.choice(patients)
             d_id = random.choice(doctors) if doctors else None
-            r_id = random.choice(kham_rooms) if kham_rooms else None
+
             time_str = f"{random.randint(7, 16):02d}:{random.choice(['00', '15', '30', '45'])}"
             reason = random.choice(reasons)
             status = "Hoàn thành" if current_date < end_date else random.choice(["Chờ", "Đang khám", "Hoàn thành"])
             
             cur.execute("""
-                INSERT INTO appointments (patient_id, doctor_id, room_id, appointment_date, appointment_time, reason, status)
-                VALUES (?,?,?,?,?,?,?)
-            """, (p_id, d_id, r_id, date_str, time_str, reason, status))
+                INSERT INTO appointments (patient_id, doctor_id, appointment_date, appointment_time, reason, status)
+                VALUES (?,?,?,?,?,?)
+            """, (p_id, d_id, date_str, time_str, reason, status))
             
             if status == "Hoàn thành":
                 # Tạo Medical Record
@@ -202,7 +156,7 @@ def generate_data():
     conn.commit()
     conn.close()
     print("✅ Đã tạo thành công dữ liệu khổng lồ (tháng 4, 5, 6 năm 2026).")
-    print("✅ Đã cập nhật tổng cộng 400 giường bệnh.")
+
 
 if __name__ == "__main__":
     generate_data()

@@ -9,7 +9,6 @@ import core.auth as auth
 from ui.patient_tab       import PatientTab
 from ui.staff_tab         import StaffTab
 from ui.appointment_tab   import AppointmentTab
-from ui.room_tab          import RoomTab
 from ui.medicine_tab      import MedicineTab
 from ui.nursing_tab       import NursingTab
 from ui.medical_order_tab import MedicalOrderTab
@@ -85,7 +84,6 @@ class MainWindow(QMainWindow):
             ("👨‍⚕️","Nhân viên",        "staff",           lambda: StaffTab()),
             ("📋","Y lệnh",            "medical_orders",  lambda: MedicalOrderTab()),
             ("🗓️","Lịch hẹn",          "appointments",    lambda: AppointmentTab()),
-            ("🏠","Phòng / Giường",     "rooms",           lambda: RoomTab()),
             ("🩺","Chăm sóc ĐD",       "medical_records", lambda: NursingTab()),
             ("💊","Thuốc & Kê đơn",    "medicines",       lambda: MedicineTab()),
             ("🔬","Xét nghiệm",        "lab",             lambda: LabTab()),
