@@ -53,7 +53,7 @@ def _check_gemini_key_or_warn(parent_widget=None) -> bool:
 
 SYSTEM_PROMPT = """Bạn là trợ lý AI y tế của Hệ thống Quản lý Bệnh viện.
 Nhiệm vụ của bạn là hỗ trợ nhân viên y tế tra cứu thông tin về:
-- Thuốc: công dụng, liều dùng, chống chỉ định, tương tác thuốc
+- Thuốc: công dụng, liều dùng, chống chỉ định
 - Bệnh lý: triệu chứng, nguyên nhân, phác đồ điều trị, phòng ngừa
 - Quy trình y tế: thủ tục khám bệnh, xét nghiệm, phẫu thuật
 - Chăm sóc bệnh nhân: dinh dưỡng, phục hồi chức năng
@@ -66,7 +66,7 @@ KHÔNG đưa ra chẩn đoán cụ thể cho bệnh nhân cụ thể."""
 QUICK_QUESTIONS = [
     "Liều dùng Paracetamol cho người lớn?",
     "Triệu chứng viêm ruột thừa cấp?",
-    "Tương tác giữa Aspirin và Warfarin?",
+    "Biến chứng của bệnh tiểu đường?",
     "Phác đồ điều trị tăng huyết áp?",
     "Chăm sóc bệnh nhân sau phẫu thuật?",
     "Chỉ định xét nghiệm công thức máu?",

@@ -14,9 +14,7 @@ from ui.medicine_tab      import MedicineTab
 from ui.nursing_tab       import NursingTab
 from ui.lab_tab           import LabTab
 from ui.billing_tab       import BillingTab
-from ui.export_tab        import ExportTab
-from ui.stats_tab         import StatsTab
-from ui.drug_interaction_tab import DrugInteractionTab
+
 from ui.executive_report_tab import ExecutiveReportTab
 # FraudDetectionTab removed — was imported but never added to nav_items (dead code)
 from ui.predictive_analytics_tab import PredictiveAnalyticsTab
@@ -91,12 +89,10 @@ class MainWindow(QMainWindow):
             ("💊","Thuốc & Kê đơn",    "medicines",       lambda: MedicineTab()),
             ("🔬","Xét nghiệm",        "lab",             lambda: LabTab()),
             ("💰","Viện phí",           "billing",         lambda: BillingTab()),
-            ("📊","Thống kê",           "reports",         lambda: StatsTab(role=role_key)),
             ("📋","Báo cáo Điều hành",  "reports",         lambda: ExecutiveReportTab()),
             ("🔮","Dự báo Lượng bệnh",  "reports",         lambda: PredictiveAnalyticsTab()),
-            ("📤","Xuất báo cáo",       "export",          lambda: ExportTab()),
+
             ("💬","Chatbot AI",        "ai",              lambda: ChatbotTab()),
-            ("💊","Canh bao Tuong tac",  "drug_interaction", lambda: DrugInteractionTab()),
             ("🛡️","Audit Trail",       "audit_logs",      lambda: AuditLogTab()),
         ]
 
@@ -109,6 +105,9 @@ class MainWindow(QMainWindow):
             if lich_hen_idx != -1:
                 lich_hen_item = nav_items.pop(lich_hen_idx)
                 nav_items.insert(0, lich_hen_item)
+            
+            # Xoá mục "Thuốc & Kê đơn" đối với bác sĩ
+            nav_items = [item for item in nav_items if item[1] != "Thuốc & Kê đơn"]
 
         has_settings_access = any(p.startswith("settings.") for p in auth._current_permissions)
         if role_key == "admin" or has_settings_access:

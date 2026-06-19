@@ -16,10 +16,7 @@ hospital_management/
 │   └── auth.py                    # Đăng nhập, phân quyền, bcrypt
 │
 ├── utils/
-│   ├── search.py                  # Tìm kiếm NLP fuzzy (rapidfuzz)
-│   ├── export.py                  # Xuất PDF (reportlab) + Excel (openpyxl)
-│   └── disease_model.pkl          # Model AI (tự tạo lần đầu chạy)
-│
+│   └── search.py                  # Tìm kiếm NLP fuzzy (rapidfuzz)
 ├── ui/
 │   ├── login_window.py            # Màn hình đăng nhập
 │   ├── main_window.py             # Cửa sổ chính + sidebar navigation
@@ -27,10 +24,8 @@ hospital_management/
 │   ├── staff_tab.py               # 👨‍⚕️ Quản lý nhân viên
 │   ├── appointment_tab.py         # 🗓️ Quản lý lịch hẹn & tái khám
 │   ├── room_tab.py                # 🏠 Quản lý phòng/giường bệnh
-│   ├── medicine_tab.py            # 💊 Thuốc, kê đơn, tương tác thuốc
-│   ├── export_tab.py              # 📤 Xuất báo cáo PDF/Excel
-│   ├── stats_tab.py               # 📊 Biểu đồ thống kê (Matplotlib)
-│   ├── ai_prediction_tab.py       # 🔮 Dự đoán bệnh (scikit-learn)
+│   ├── medicine_tab.py            # 💊 Thuốc, kê đơn
+│
 │   ├── chatbot_tab.py             # 💬 Chatbot AI (Google Gemini API)
 │   └── settings_tab.py            # ⚙️ Cài đặt, Backup/Restore, Đổi mật khẩu
 │
@@ -87,15 +82,15 @@ Hệ thống phân quyền chặt chẽ (RBAC) với 14 vai trò. Mỗi vai trò
    - Viện phí & Thống kê tài chính
    - Báo cáo Điều hành (Dashboard đặc biệt cho Giám đốc)
    - Dự báo Lượng bệnh (AI Predictive Analytics)
-   - Xuất báo cáo, Cảnh báo tương tác thuốc, Chatbot AI
+   - Chatbot AI
 
 3. **Bác sĩ (Doctor)**
    - Quản lý Bệnh nhân & Xem lịch sử khám
    - Quản lý Lịch hẹn
    - Bệnh án / Khám bệnh (Chẩn đoán, Y lệnh)
-   - Thuốc & Kê đơn, Cảnh báo Tương tác thuốc (AI)
+   - Thuốc & Kê đơn
    - Xem kết quả Xét nghiệm
-   - Xuất báo cáo bệnh án, Thống kê, Chatbot AI
+   - Thống kê, Chatbot AI
 
 4. **Y tá / Điều dưỡng (Nurse)**
    - Quản lý Bệnh nhân & Lịch hẹn
@@ -108,7 +103,7 @@ Hệ thống phân quyền chặt chẽ (RBAC) với 14 vai trò. Mỗi vai trò
    - Quản lý Nhân viên trong khoa, Lịch trực (Shift Schedule)
    - Quản lý Bệnh nhân, Lịch hẹn
    - Bệnh án, Thuốc & Kê đơn, Xét nghiệm
-   - Xuất báo cáo, Thống kê, Chatbot AI
+   - Thống kê, Chatbot AI
 
 6. **Lễ tân (Receptionist)**
    - Quản lý Bệnh nhân (Tiếp nhận, đăng ký mới)
@@ -119,7 +114,6 @@ Hệ thống phân quyền chặt chẽ (RBAC) với 14 vai trò. Mỗi vai trò
 7. **Dược sĩ (Pharmacist)**
    - Quản lý Kho Thuốc (Nhập/Xuất, Kho thông minh)
    - Duyệt đơn thuốc & Cấp phát thuốc
-   - Cảnh báo Tương tác thuốc (AI)
    - Thống kê kho thuốc, Chatbot AI
 
 8. **Xét nghiệm viên (Lab Technician)**
@@ -128,7 +122,6 @@ Hệ thống phân quyền chặt chẽ (RBAC) với 14 vai trò. Mỗi vai trò
 
 9. **Kế toán (Accountant)**
    - Quản lý Viện phí & Thanh toán
-   - Xuất báo cáo tài chính
    - Thống kê doanh thu
 
 10. **Thu ngân (Cashier)**
@@ -138,7 +131,6 @@ Hệ thống phân quyền chặt chẽ (RBAC) với 14 vai trò. Mỗi vai trò
     - Quản lý Hồ sơ nhân viên
     - Quản lý Lịch làm việc/Ca trực (Shift Schedule)
     - Cài đặt & Cấu hình Lương (Salary Config), Xin/Duyệt nghỉ phép
-    - Xuất báo cáo nhân sự
 
 12. **Bảo vệ / Lái xe cứu thương / Nhân viên vệ sinh**
     - Nhóm hỗ trợ nội bộ.
@@ -194,10 +186,7 @@ Hệ thống phân quyền chặt chẽ (RBAC) với 14 vai trò. Mỗi vai trò
 | Tính năng | Mô tả | Loại |
 |-----------|-------|------|
 | Dashboard Báo cáo Điều hành | Hệ thống biểu đồ trực quan (Matplotlib) theo dõi doanh thu và KPI bệnh viện. | Nâng cao |
-| Xuất Báo cáo (PDF/Excel) | Kết xuất dữ liệu khám chữa bệnh, doanh thu chuyên nghiệp (sử dụng Reportlab).| Nâng cao |
 | AI Dự báo Lượng bệnh nhân | Phân tích xu hướng để dự báo lượng bệnh trong tương lai giúp sắp xếp nhân sự. | AI |
-| AI Dự đoán Bệnh học | Mô hình Machine Learning (Random Forest) hỗ trợ chẩn đoán từ các triệu chứng. | AI |
-| AI Cảnh báo Tương tác thuốc | Hệ thống tự động quét và cảnh báo nguy hiểm khi kê đơn thuốc xung đột nhau. | AI |
 | Chatbot Y tế (Google Gemini) | Trợ lý ảo thông minh giải đáp bệnh lý, thông tin thuốc và quy trình y tế. | AI |
 
 ---

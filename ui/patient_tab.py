@@ -295,7 +295,7 @@ class PatientDetailDialog(QDialog):
             <h3 style="color: #c53030;">Các chẩn đoán chính trong quá khứ:</h3>
             {diag_html}
             <h3 style="color: #276749;">Lưu ý lâm sàng:</h3>
-            <p>Cần theo dõi các tiền sử bệnh trên khi kê đơn mới. Không phát hiện tương tác thuốc nghiêm trọng trong các đợt điều trị trước.</p>
+            <p>Cần theo dõi các tiền sử bệnh trên khi kê đơn mới.</p>
         </div>
         """
         self.ai_summary_viewer.setHtml(html_summary)

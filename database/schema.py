@@ -200,15 +200,7 @@ def init_db():
         updated_at      TEXT DEFAULT (datetime('now','localtime'))
     )""")
 
-    # ── Drug Interactions ─────────────────────────────────────────
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS drug_interactions (
-        id            INTEGER PRIMARY KEY AUTOINCREMENT,
-        medicine_id_1 INTEGER NOT NULL REFERENCES medicines(id),
-        medicine_id_2 INTEGER NOT NULL REFERENCES medicines(id),
-        severity      TEXT NOT NULL CHECK(severity IN ('Nguy hiểm','Thận trọng','Theo dõi')),
-        description   TEXT
-    )""")
+
 
     # ── Prescriptions ─────────────────────────────────────────────
     cur.execute("""
@@ -307,6 +299,17 @@ def init_db():
         created_at  TEXT DEFAULT (datetime('now','localtime'))
     )""")
 
+    # ── Shift Schedules ────────────────────────────────────────────
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS shift_schedules (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        staff_id    INTEGER NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+        shift_date  TEXT NOT NULL,
+        shift_type  TEXT NOT NULL CHECK(shift_type IN ('Sáng', 'Chiều', 'Đêm')),
+        notes       TEXT,
+        created_at  TEXT DEFAULT (datetime('now','localtime'))
+    )""")
+
     conn.commit()
     # ── Live migrations for existing databases ──────────────────────────────
     _migrate_db(conn, cur)
@@ -342,6 +345,18 @@ def _migrate_db(conn, cur):
             end_date    TEXT NOT NULL,
             reason      TEXT NOT NULL,
             status      TEXT DEFAULT 'Chờ duyệt' CHECK(status IN ('Chờ duyệt', 'Đã duyệt', 'Từ chối')),
+            created_at  TEXT DEFAULT (datetime('now','localtime'))
+        )""")
+        conn.commit()
+
+    if "shift_schedules" not in tables:
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS shift_schedules (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            staff_id    INTEGER NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+            shift_date  TEXT NOT NULL,
+            shift_type  TEXT NOT NULL CHECK(shift_type IN ('Sáng', 'Chiều', 'Đêm')),
+            notes       TEXT,
             created_at  TEXT DEFAULT (datetime('now','localtime'))
         )""")
         conn.commit()
@@ -402,8 +417,8 @@ def _seed_rbac(cur, conn):
 
     permissions = [
         "patients", "staff", "appointments", "medical_records", "medical_orders",
-        "medicines", "pharmacy", "rooms", "billing", "lab", "reports", "export",
-        "settings", "ai", "drug_interaction", "audit_logs",
+        "medicines", "pharmacy", "rooms", "billing", "lab", "reports",
+        "settings", "ai", "audit_logs",
         "settings.personal_info", "settings.leave", "settings.salary_view",
         "settings.salary_config", "settings.security"
     ]
@@ -412,16 +427,16 @@ def _seed_rbac(cur, conn):
     # Mapping roles to permissions
     role_perms = {
         "admin": ["staff", "settings", "audit_logs", "billing"], # Billing just to see issues, no medical records
-        "doctor": ["patients", "appointments", "medical_records", "medicines", "lab", "reports", "export", "ai", "drug_interaction"],
-        "nurse": ["patients", "appointments", "medical_records", "medical_orders", "rooms", "reports", "ai", "drug_interaction"],
+        "doctor": ["patients", "appointments", "medical_records", "medicines", "lab", "reports", "ai"],
+        "nurse": ["patients", "appointments", "medical_records", "medical_orders", "rooms", "reports", "ai"],
         "receptionist": ["patients", "appointments", "rooms", "billing", "reports"],
-        "pharmacist": ["medicines", "pharmacy", "reports", "ai", "drug_interaction"],
-        "accountant": ["billing", "reports", "export"],
+        "pharmacist": ["medicines", "pharmacy", "reports", "ai"],
+        "accountant": ["billing", "reports"],
         "lab_technician": ["lab", "reports", "ai"],
-        "director": ["patients", "staff", "appointments", "rooms", "reports", "export", "ai", "drug_interaction", "billing"],
+        "director": ["patients", "staff", "appointments", "rooms", "reports", "ai", "billing"],
         "cashier": ["billing"],
-        "department_head": ["patients", "appointments", "medical_records", "medicines", "lab", "reports", "export", "ai", "drug_interaction", "staff"],
-        "hr_manager": ["staff", "export",
+        "department_head": ["patients", "appointments", "medical_records", "medicines", "lab", "reports", "ai", "staff"],
+        "hr_manager": ["staff",
                        "settings.personal_info", "settings.leave",
                        "settings.salary_view", "settings.salary_config", "settings.security"],
         # ── Support staff: limited settings only ──
@@ -576,15 +591,7 @@ def _seed_data(cur, conn):
         VALUES (?,?,?,?,?,?,?,?,?,?)
     """, meds)
 
-    # Drug interactions
-    cur.executemany("""
-        INSERT INTO drug_interactions (medicine_id_1, medicine_id_2, severity, description)
-        VALUES (?,?,?,?)
-    """, [
-        (7,8,"Nguy hiểm","Aspirin + Warfarin: tăng nguy cơ xuất huyết nghiêm trọng"),
-        (2,9,"Thận trọng","Amoxicillin + Ciprofloxacin: có thể giảm hiệu quả kháng sinh"),
-        (3,7,"Theo dõi",  "Ibuprofen + Aspirin: tăng nguy cơ loét dạ dày"),
-    ])
+
 
     conn.commit()
 

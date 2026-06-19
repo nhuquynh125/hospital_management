@@ -10,8 +10,8 @@ from PyQt6.QtWidgets import (
     QGroupBox, QGridLayout
 )
 from PyQt6.QtCore import Qt, QDate
-from PyQt6.QtGui import QFont, QColor
-
+from PyQt6.QtGui import QFont, QColor, QTextDocument
+from PyQt6.QtPrintSupport import QPrinter, QPrintDialog
 import database.dao as dao
 import core.auth as auth
 
@@ -361,7 +361,7 @@ class PrescriptionTab(QWidget):
         self.rx_table.verticalHeader().setVisible(False)
         rl.addWidget(self.rx_table)
 
-        # Drug interaction warning
+        # Warning panel
         self.warn_frame = QFrame()
         self.warn_frame.setObjectName("warnFrame")
         self.warn_frame.hide()
@@ -427,7 +427,7 @@ class PrescriptionTab(QWidget):
         })
         self.f_dosage.clear(); self.f_rx_note.clear()
         self._refresh_rx_table()
-        self._check_interactions()
+        self._check_warnings()
 
     def _refresh_rx_table(self):
         self.rx_table.setRowCount(len(self.rx_items))
@@ -449,9 +449,9 @@ class PrescriptionTab(QWidget):
     def _remove_rx(self, idx):
         self.rx_items.pop(idx)
         self._refresh_rx_table()
-        self._check_interactions()
+        self._check_warnings()
 
-    def _check_interactions(self):
+    def _check_warnings(self):
         self.warn_lbl.clear()
         if not self.rx_items:
             self.warn_frame.hide(); return
@@ -473,16 +473,6 @@ class PrescriptionTab(QWidget):
                         msgs.append(f"🔴 <b>CẢNH BÁO DỊ ỨNG:</b> Bệnh nhân dị ứng '{allergy}' -> <b>{med_info['name']}</b>")
                         has_danger = True
 
-        # 2. Drug interactions
-        if len(self.rx_items) >= 2:
-            med_ids  = [i["medicine_id"] for i in self.rx_items]
-            warnings = dao.check_drug_interactions(med_ids)
-            for w in warnings:
-                sev = w["severity"]
-                icon = "🔴" if sev == "Nguy hiểm" else "🟡" if sev == "Thận trọng" else "🔵"
-                msgs.append(f"{icon} <b>{w['med1']} + {w['med2']}</b> — {sev}: {w['description'] or ''}")
-                if sev == "Nguy hiểm": has_danger = True
-
         if not msgs:
             self.warn_frame.hide(); return
 
@@ -499,6 +489,158 @@ class PrescriptionTab(QWidget):
             "items": self.rx_items,
             "notes": self.f_presc_notes.toPlainText().strip(),
         }
+
+
+# ═══════════════════════════════════════════════════════════
+#  Save Success & Print Dialog
+# ═══════════════════════════════════════════════════════════
+class SaveSuccessDialog(QDialog):
+    def __init__(self, summary, patient, exam_data, rx_data, doctor_name, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Lưu thành công")
+        self.setMinimumWidth(400)
+        self.patient = patient
+        self.exam_data = exam_data
+        self.rx_data = rx_data
+        self.doctor_name = doctor_name
+
+        layout = QVBoxLayout(self)
+        
+        lbl = QLabel(summary)
+        lbl.setWordWrap(True)
+        lbl.setStyleSheet("font-size: 13px; color: #2d3748; padding: 10px;")
+        layout.addWidget(lbl)
+
+        btn_layout = QHBoxLayout()
+        
+        self.btn_print_exam = QPushButton("🖨️ In phiếu khám bệnh")
+        self.btn_print_exam.setStyleSheet("padding: 8px; background: #3182ce; color: white; border-radius: 4px;")
+        self.btn_print_exam.clicked.connect(self._print_exam)
+        btn_layout.addWidget(self.btn_print_exam)
+        
+        self.btn_print_rx = QPushButton("🖨️ In đơn thuốc")
+        self.btn_print_rx.setStyleSheet("padding: 8px; background: #3182ce; color: white; border-radius: 4px;")
+        self.btn_print_rx.clicked.connect(self._print_rx)
+        if not self.rx_data.get("items"):
+            self.btn_print_rx.setEnabled(False)
+            self.btn_print_rx.setStyleSheet("padding: 8px; background: #cbd5e0; color: #718096; border-radius: 4px;")
+        btn_layout.addWidget(self.btn_print_rx)
+        
+        self.btn_close = QPushButton("Đóng")
+        self.btn_close.setStyleSheet("padding: 8px; background: #e2e8f0; border-radius: 4px;")
+        self.btn_close.clicked.connect(self.accept)
+        btn_layout.addWidget(self.btn_close)
+        
+        layout.addLayout(btn_layout)
+
+    def _print_exam(self):
+        html = f"""
+        <html>
+        <head>
+            <style>
+                body {{ font-family: 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.6; color: #000; }}
+                h2 {{ text-align: center; margin-bottom: 5px; font-size: 24px; }}
+                h4 {{ text-align: center; margin-top: 0; font-weight: normal; font-size: 14px; }}
+                h3 {{ text-align: left; margin: 0; font-size: 16px; font-weight: bold; }}
+                .info {{ margin-top: 20px; margin-bottom: 20px; }}
+                .info p {{ margin: 4px 0; }}
+                .sign {{ text-align: center; float: right; width: 250px; margin-top: 40px; }}
+            </style>
+        </head>
+        <body>
+            <h3>PHÒNG KHÁM ĐA KHOA</h3>
+            <h2>PHIẾU KHÁM BỆNH</h2>
+            <h4>Ngày khám: {datetime.now().strftime('%d/%m/%Y')}</h4>
+            <div class="info">
+                <p><b>Họ tên bệnh nhân:</b> {self.patient['full_name']} 
+                   &nbsp;&nbsp;&nbsp;&nbsp;<b>Năm sinh:</b> {self.patient['birth_date'][:4] if self.patient['birth_date'] else ''}
+                   &nbsp;&nbsp;&nbsp;&nbsp;<b>Giới tính:</b> {self.patient['gender']}
+                </p>
+                <p><b>SĐT:</b> {self.patient['phone']}</p>
+                <hr>
+                <p><b>Triệu chứng:</b> {self.exam_data.get('symptoms', '')}</p>
+                <p><b>Chẩn đoán:</b> {self.exam_data.get('diagnosis', '')}</p>
+                <p><b>Phác đồ điều trị:</b> {self.exam_data.get('treatment_plan', '')}</p>
+                <p><b>Lời dặn / Ghi chú:</b> {self.exam_data.get('notes', '')}</p>
+                <p><b>Hẹn tái khám:</b> {self.exam_data.get('follow_up_date') if self.exam_data.get('follow_up_date') else 'Không'}</p>
+            </div>
+            <div class="sign">
+                <p><i>Ngày {datetime.now().day} tháng {datetime.now().month} năm {datetime.now().year}</i></p>
+                <p><b>Bác sĩ khám bệnh</b></p>
+                <br><br><br><br>
+                <p><b>{self.doctor_name}</b></p>
+            </div>
+        </body>
+        </html>
+        """
+        self._do_print(html)
+
+    def _print_rx(self):
+        rows = ""
+        for i, item in enumerate(self.rx_data.get('items', [])):
+            rows += f"""
+            <tr>
+                <td style="text-align:center; padding: 6px;">{i+1}</td>
+                <td style="padding: 6px;"><b>{item['name']}</b><br><small>{item['dosage']}</small></td>
+                <td style="text-align:center; padding: 6px;">{item['quantity']} {item['unit']}</td>
+                <td style="text-align:center; padding: 6px;">{item['duration_days']} ngày</td>
+            </tr>
+            """
+            
+        html = f"""
+        <html>
+        <head>
+            <style>
+                body {{ font-family: 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.6; color: #000; }}
+                h2 {{ text-align: center; margin-bottom: 5px; font-size: 24px; }}
+                h4 {{ text-align: center; margin-top: 0; font-weight: normal; font-size: 14px; }}
+                h3 {{ text-align: left; margin: 0; font-size: 16px; font-weight: bold; }}
+                table {{ width: 100%; border-collapse: collapse; margin-top: 20px; }}
+                th, td {{ border: 1px solid #000; padding: 8px; text-align: left; }}
+                .sign {{ text-align: center; float: right; width: 250px; margin-top: 40px; }}
+            </style>
+        </head>
+        <body>
+            <h3>PHÒNG KHÁM ĐA KHOA</h3>
+            <h2>ĐƠN THUỐC</h2>
+            <h4>Ngày khám: {datetime.now().strftime('%d/%m/%Y')}</h4>
+            
+            <p><b>Họ tên bệnh nhân:</b> {self.patient['full_name']} 
+               &nbsp;&nbsp;&nbsp;&nbsp;<b>Năm sinh:</b> {self.patient['birth_date'][:4] if self.patient['birth_date'] else ''}
+               &nbsp;&nbsp;&nbsp;&nbsp;<b>Giới tính:</b> {self.patient['gender']}
+            </p>
+            <p><b>Chẩn đoán:</b> {self.exam_data.get('diagnosis', '')}</p>
+            
+            <table>
+                <tr>
+                    <th style="width: 5%; text-align:center;">STT</th>
+                    <th style="width: 55%;">Tên thuốc / Cách dùng</th>
+                    <th style="width: 20%; text-align:center;">Số lượng</th>
+                    <th style="width: 20%; text-align:center;">Số ngày</th>
+                </tr>
+                {rows}
+            </table>
+            
+            <p style="margin-top: 20px;"><b>Lời dặn:</b> {self.rx_data.get('notes', '')}</p>
+            
+            <div class="sign">
+                <p><i>Ngày {datetime.now().day} tháng {datetime.now().month} năm {datetime.now().year}</i></p>
+                <p><b>Bác sĩ kê đơn</b></p>
+                <br><br><br><br>
+                <p><b>{self.doctor_name}</b></p>
+            </div>
+        </body>
+        </html>
+        """
+        self._do_print(html)
+        
+    def _do_print(self, html):
+        printer = QPrinter()
+        dialog = QPrintDialog(printer, self)
+        if dialog.exec() == QPrintDialog.DialogCode.Accepted:
+            doc = QTextDocument()
+            doc.setHtml(html)
+            doc.print(printer)
 
 
 # ═══════════════════════════════════════════════════════════
@@ -627,7 +769,7 @@ class ExaminationDialog(QDialog):
         lab_data  = self.lab_tab.get_orders()
         rx_data   = self.rx_tab.get_data()
 
-        # Warn dangerous interactions and allergies
+        # Warn dangerous allergies
         if rx_data["items"]:
             danger_msgs = []
             med_ids  = [i["medicine_id"] for i in rx_data["items"]]
@@ -642,11 +784,6 @@ class ExaminationDialog(QDialog):
                     for allergy in allergies:
                         if len(allergy) > 2 and allergy in med_text:
                             danger_msgs.append(f"- Dị ứng '{allergy}' với {med_info['name']}")
-                            
-            warnings = dao.check_drug_interactions(med_ids)
-            for w in warnings:
-                if w["severity"] == "Nguy hiểm":
-                    danger_msgs.append(f"- {w['med1']} + {w['med2']}: {w['description']}")
             
             if danger_msgs:
                 reply = QMessageBox.warning(
@@ -720,7 +857,9 @@ class ExaminationDialog(QDialog):
         if exam_data.get("follow_up_date"):
             summary += f"\n📅 Hẹn tái khám: {exam_data['follow_up_date']}"
 
-        QMessageBox.information(self, "Lưu thành công", summary)
+        doc_name = user['full_name'] if user else '—'
+        dialog = SaveSuccessDialog(summary, self.patient, exam_data, rx_data, doc_name, self)
+        dialog.exec()
         self.accept()
 
     # ── Style ────────────────────────────────────────────────────
@@ -809,7 +948,7 @@ class ExaminationDialog(QDialog):
         }
         #cancelBtn:hover { background:#fed7d7; }
 
-        /* Interaction warning */
+        /* Warning */
         #warnLbl { font-size:12px; color:#2d3748; }
 
         QTableWidget {

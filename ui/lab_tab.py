@@ -38,14 +38,16 @@ STATUS_COLORS = {
 
 
 class LabTestDialog(QDialog):
-    def __init__(self, parent=None, test_data=None, enter_result=False):
+    def __init__(self, parent=None, test_data=None, enter_result=False, view_only=False):
         super().__init__(parent)
         self.test_data   = test_data
         self.is_edit     = test_data is not None
         self.enter_result = enter_result
+        self.view_only   = view_only
         self.patients    = dao.get_all_patients()
         self.doctors     = dao.get_doctors()
-        self.setWindowTitle("Nhập kết quả" if enter_result else ("Sửa" if self.is_edit else "Chỉ định xét nghiệm"))
+        title = "Xem kết quả" if view_only else ("Nhập kết quả" if enter_result else ("Sửa" if self.is_edit else "Chỉ định xét nghiệm"))
+        self.setWindowTitle(title)
         self.setMinimumWidth(480)
         self.setModal(True)
         self._build_ui()
@@ -58,9 +60,10 @@ class LabTestDialog(QDialog):
         layout.setContentsMargins(20,20,20,20)
         layout.setSpacing(12)
 
-        icon = "🔬" if self.enter_result else ("✏️" if self.is_edit else "➕")
-        title_str = "Nhập kết quả xét nghiệm" if self.enter_result else \
-                    ("Sửa phiếu xét nghiệm" if self.is_edit else "Chỉ định xét nghiệm mới")
+        icon = "👁️" if self.view_only else ("🔬" if self.enter_result else ("✏️" if self.is_edit else "➕"))
+        title_str = "Xem kết quả xét nghiệm" if self.view_only else \
+                    ("Nhập kết quả xét nghiệm" if self.enter_result else \
+                    ("Sửa phiếu xét nghiệm" if self.is_edit else "Chỉ định xét nghiệm mới"))
         title = QLabel(f"{icon} {title_str}")
         title.setFont(QFont("Segoe UI", 13, QFont.Weight.Bold))
         title.setObjectName("dlgTitle")
@@ -114,13 +117,28 @@ class LabTestDialog(QDialog):
             self.f_test_type.hide(); self.f_ordered.hide()
             self.f_status.setCurrentText("Có kết quả")
 
+        if self.view_only:
+            self.f_patient.setEnabled(False)
+            self.f_doctor.setEnabled(False)
+            self.f_test_type.setEnabled(False)
+            self.f_ordered.setEnabled(False)
+            self.f_status.setEnabled(False)
+            self.f_result.setReadOnly(True)
+            self.f_result_date.setEnabled(False)
+            self.f_notes.setReadOnly(True)
+
         btn_row = QHBoxLayout(); btn_row.addStretch()
-        cancel_btn = QPushButton("Huỷ"); cancel_btn.setObjectName("cancelBtn")
-        save_btn   = QPushButton("Lưu kết quả" if self.enter_result else "Lưu")
-        save_btn.setObjectName("saveBtn")
-        cancel_btn.clicked.connect(self.reject)
-        save_btn.clicked.connect(self._save)
-        btn_row.addWidget(cancel_btn); btn_row.addWidget(save_btn)
+        if self.view_only:
+            close_btn = QPushButton("Đóng"); close_btn.setObjectName("cancelBtn")
+            close_btn.clicked.connect(self.accept)
+            btn_row.addWidget(close_btn)
+        else:
+            cancel_btn = QPushButton("Huỷ"); cancel_btn.setObjectName("cancelBtn")
+            save_btn   = QPushButton("Lưu kết quả" if self.enter_result else "Lưu")
+            save_btn.setObjectName("saveBtn")
+            cancel_btn.clicked.connect(self.reject)
+            save_btn.clicked.connect(self._save)
+            btn_row.addWidget(cancel_btn); btn_row.addWidget(save_btn)
         layout.addLayout(btn_row)
 
     def _fill_form(self):
@@ -216,15 +234,23 @@ class LabTab(QWidget):
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
         self.table.verticalHeader().setVisible(False)
+        self.table.itemDoubleClicked.connect(self._view_test_from_item)
         layout.addWidget(self.table)
 
         a_row = QHBoxLayout()
+        self.view_btn   = QPushButton("👁️ Xem");           self.view_btn.setObjectName("actionBtn")
         self.result_btn = QPushButton("🔬 Nhập kết quả"); self.result_btn.setObjectName("primaryBtn")
         self.edit_btn   = QPushButton("✏️ Sửa");           self.edit_btn.setObjectName("actionBtn")
+        self.view_btn.clicked.connect(self._view_test)
         self.result_btn.clicked.connect(self._enter_result)
         self.edit_btn.clicked.connect(self._edit_test)
-        a_row.addWidget(self.result_btn); a_row.addWidget(self.edit_btn); a_row.addStretch()
+        a_row.addWidget(self.view_btn); a_row.addWidget(self.result_btn); a_row.addWidget(self.edit_btn); a_row.addStretch()
         layout.addLayout(a_row)
+
+        user = auth.get_current_user()
+        if user and user.get("role") == "doctor":
+            self.result_btn.hide()
+            self.edit_btn.hide()
 
     def load_data(self):
         search = self.search_box.text().strip()
@@ -275,6 +301,20 @@ class LabTab(QWidget):
         dlg = LabTestDialog(self, test_data=t, enter_result=True)
         if dlg.exec() == QDialog.DialogCode.Accepted:
             dao.update_lab_test(tid, dlg.result_data); self.load_data()
+
+    def _view_test(self):
+        tid = self._selected_id()
+        if not tid: return
+        t = dao.get_lab_test_by_id(tid)
+        dlg = LabTestDialog(self, test_data=t, view_only=True)
+        dlg.exec()
+
+    def _view_test_from_item(self, item):
+        tid = self.table.item(item.row(), 0).data(Qt.ItemDataRole.UserRole.value)
+        if not tid: return
+        t = dao.get_lab_test_by_id(tid)
+        dlg = LabTestDialog(self, test_data=t, view_only=True)
+        dlg.exec()
 
     def _apply_style(self):
         self.setStyleSheet("""

@@ -634,29 +634,6 @@ def delete_medicine(med_id: int):
     conn.close()
 
 
-def check_drug_interactions(medicine_ids: list) -> list:
-    """Return list of interactions between any pair in medicine_ids."""
-    if len(medicine_ids) < 2:
-        return []
-    conn = get_connection()
-    results = []
-    for i in range(len(medicine_ids)):
-        for j in range(i+1, len(medicine_ids)):
-            row = conn.execute("""
-                SELECT di.*, m1.name AS med1, m2.name AS med2
-                FROM drug_interactions di
-                JOIN medicines m1 ON di.medicine_id_1 = m1.id
-                JOIN medicines m2 ON di.medicine_id_2 = m2.id
-                WHERE (di.medicine_id_1=? AND di.medicine_id_2=?)
-                   OR (di.medicine_id_1=? AND di.medicine_id_2=?)
-            """, (medicine_ids[i], medicine_ids[j],
-                  medicine_ids[j], medicine_ids[i])).fetchone()
-            if row:
-                results.append(dict(row))
-    conn.close()
-    return results
-
-
 # ═══════════════════════════════════════════════════════════
 #  PRESCRIPTIONS
 # ═══════════════════════════════════════════════════════════
@@ -1353,64 +1330,6 @@ def get_audit_logs(limit=100):
     conn.close()
     return rows
 
-# ════════════════════════════════════════════════════════════════════
-#  DRUG INTERACTION DATABASE MANAGEMENT
-# ════════════════════════════════════════════════════════════════════
-
-def get_drug_interactions_list() -> list:
-    """Return all drug_interactions rows joined with medicine names."""
-    conn = get_connection()
-    rows = conn.execute("""
-        SELECT di.id, di.severity, di.description,
-               m1.name AS med1, m2.name AS med2,
-               di.medicine_id_1, di.medicine_id_2
-        FROM drug_interactions di
-        JOIN medicines m1 ON di.medicine_id_1 = m1.id
-        JOIN medicines m2 ON di.medicine_id_2 = m2.id
-        ORDER BY
-            CASE di.severity
-                WHEN 'Nguy hiểm'  THEN 1
-                WHEN 'Thận trọng' THEN 2
-                ELSE 3
-            END,
-            m1.name
-    """).fetchall()
-    conn.close()
-    return [dict(r) for r in rows]
-
-
-def add_drug_interaction(data: dict) -> int:
-    """Insert a new drug_interactions row. Returns new id."""
-    conn = get_connection()
-    # Prevent duplicate pairs (A-B same as B-A)
-    existing = conn.execute("""
-        SELECT id FROM drug_interactions
-        WHERE (medicine_id_1=? AND medicine_id_2=?)
-           OR (medicine_id_1=? AND medicine_id_2=?)
-    """, (data["medicine_id_1"], data["medicine_id_2"],
-          data["medicine_id_2"], data["medicine_id_1"])).fetchone()
-    if existing:
-        conn.close()
-        raise ValueError("Tuong tac giua cap thuoc nay da ton tai trong he thong.")
-    cur = conn.execute("""
-        INSERT INTO drug_interactions (medicine_id_1, medicine_id_2, severity, description)
-        VALUES (?, ?, ?, ?)
-    """, (data["medicine_id_1"], data["medicine_id_2"],
-          data["severity"], data.get("description", "")))
-    conn.commit()
-    new_id = cur.lastrowid
-    conn.close()
-    return new_id
-
-
-def delete_drug_interaction(interaction_id: int):
-    """Delete a drug_interactions row by id."""
-    conn = get_connection()
-    conn.execute("DELETE FROM drug_interactions WHERE id=?", (interaction_id,))
-    conn.commit()
-    conn.close()
-
-
 def get_patient_allergies(patient_id: int) -> str:
     """Return the allergies text for a patient (empty string if none)."""
     conn = get_connection()
@@ -1478,5 +1397,45 @@ def get_all_leave_requests():
 def update_leave_request_status(request_id: int, status: str):
     conn = get_connection()
     conn.execute("UPDATE leave_requests SET status = ? WHERE id = ?", (status, request_id))
+    conn.commit()
+    conn.close()
+
+# ═══════════════════════════════════════════════════════════
+#  SHIFT SCHEDULES
+# ═══════════════════════════════════════════════════════════
+def get_shift_schedules_for_staff(staff_id: int):
+    conn = get_connection()
+    rows = conn.execute("""
+        SELECT * FROM shift_schedules
+        WHERE staff_id = ?
+        ORDER BY shift_date ASC
+    """, (staff_id,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+def create_shift_schedule(staff_id: int, shift_date: str, shift_type: str, notes: str) -> int:
+    conn = get_connection()
+    cur = conn.execute("""
+        INSERT INTO shift_schedules (staff_id, shift_date, shift_type, notes)
+        VALUES (?, ?, ?, ?)
+    """, (staff_id, shift_date, shift_type, notes))
+    conn.commit()
+    new_id = cur.lastrowid
+    conn.close()
+    return new_id
+
+def update_shift_schedule(schedule_id: int, shift_date: str, shift_type: str, notes: str):
+    conn = get_connection()
+    conn.execute("""
+        UPDATE shift_schedules
+        SET shift_date = ?, shift_type = ?, notes = ?
+        WHERE id = ?
+    """, (shift_date, shift_type, notes, schedule_id))
+    conn.commit()
+    conn.close()
+
+def delete_shift_schedule(schedule_id: int):
+    conn = get_connection()
+    conn.execute("DELETE FROM shift_schedules WHERE id = ?", (schedule_id,))
     conn.commit()
     conn.close()

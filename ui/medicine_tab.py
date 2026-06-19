@@ -17,11 +17,6 @@ MEDICINE_CATEGORIES = [
     "Hô hấp", "Thần kinh", "Nội tiết", "Vitamin & Khoáng chất",
     "Ngoài da", "Mắt / Tai / Mũi", "Khác"
 ]
-SEVERITY_COLORS = {
-    "Nguy hiểm": ("#fff5f5", "#c53030"),
-    "Thận trọng": ("#fffbeb", "#744210"),
-    "Theo dõi":   ("#ebf8ff", "#2b6cb0"),
-}
 
 
 # ═══════════════════════════════════════════════════════════
@@ -141,7 +136,7 @@ class MedicineFormDialog(QDialog):
 
 
 # ═══════════════════════════════════════════════════════════
-#  Prescription Dialog (with drug interaction check)
+#  Prescription Dialog
 # ═══════════════════════════════════════════════════════════
 class PrescriptionDialog(QDialog):
     def __init__(self, parent=None, medical_record_id=None, doctor_id=None):
@@ -210,7 +205,7 @@ class PrescriptionDialog(QDialog):
 
         splitter.addWidget(left)
 
-        # RIGHT: prescription items + interaction warnings
+        # RIGHT: prescription items
         right = QFrame()
         right.setObjectName("rightPanel")
         rl = QVBoxLayout(right)
@@ -224,18 +219,6 @@ class PrescriptionDialog(QDialog):
         self.prescription_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.prescription_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         rl.addWidget(self.prescription_table)
-
-        # Drug interaction warnings panel
-        self.warning_frame = QFrame()
-        self.warning_frame.setObjectName("warningFrame")
-        self.warning_frame.hide()
-        wl = QVBoxLayout(self.warning_frame)
-        wl.setContentsMargins(10, 8, 10, 8)
-        self.warning_lbl = QLabel()
-        self.warning_lbl.setWordWrap(True)
-        self.warning_lbl.setObjectName("warningLbl")
-        wl.addWidget(self.warning_lbl)
-        rl.addWidget(self.warning_frame)
 
         # Prescription notes
         self.f_presc_notes = QTextEdit()
@@ -279,7 +262,6 @@ class PrescriptionDialog(QDialog):
         }
         self.items.append(entry)
         self._refresh_table()
-        self._check_interactions()
 
     def _refresh_table(self):
         self.prescription_table.setRowCount(len(self.items))
@@ -296,55 +278,6 @@ class PrescriptionDialog(QDialog):
     def _remove_item(self, idx):
         self.items.pop(idx)
         self._refresh_table()
-        self._check_interactions()
-
-    def _check_interactions(self):
-        """Check drug interactions between all medicine pairs in the prescription."""
-        if len(self.items) < 2:
-            self.warning_frame.hide()
-            return
-
-        med_ids = [i["medicine_id"] for i in self.items]
-        warnings = dao.check_drug_interactions(med_ids)
-
-        if not warnings:
-            self.warning_frame.hide()
-            return
-
-        msgs = []
-        for w in warnings:
-            sev = w["severity"]
-            icon = "🔴" if sev == "Nguy hiểm" else "🟡" if sev == "Thận trọng" else "🔵"
-            msgs.append(f"{icon} <b>{w['med1']} + {w['med2']}</b> — {sev}: {w['description'] or ''}")
-
-        self.warning_lbl.setText("<br>".join(msgs))
-        self.warning_frame.show()
-
-        # Show red border for dangerous interactions
-        has_danger = any(w["severity"] == "Nguy hiểm" for w in warnings)
-        color = "#c53030" if has_danger else "#856404"
-        bg    = "#fff5f5" if has_danger else "#fffbeb"
-        self.warning_frame.setStyleSheet(
-            f"#warningFrame {{ background:{bg}; border:2px solid {color}; border-radius:8px; }}"
-        )
-
-    def _save(self):
-        if not self.items:
-            QMessageBox.warning(self, "Đơn thuốc trống", "Vui lòng thêm ít nhất một loại thuốc.")
-            return
-        # Check dangerous interactions — warn but allow override
-        med_ids  = [i["medicine_id"] for i in self.items]
-        warnings = dao.check_drug_interactions(med_ids)
-        danger   = [w for w in warnings if w["severity"] == "Nguy hiểm"]
-        if danger:
-            reply = QMessageBox.warning(
-                self, "⚠️ Cảnh báo tương tác nguy hiểm",
-                f"Phát hiện {len(danger)} tương tác NGUY HIỂM trong đơn thuốc!\n"
-                "Bạn có chắc muốn tiếp tục lưu đơn này không?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-            )
-            if reply != QMessageBox.StandardButton.Yes:
-                return
 
         self.result_data = {
             "medical_record_id": self.medical_record_id,
@@ -369,7 +302,6 @@ class PrescriptionDialog(QDialog):
         #saveBtn { background: #276749; color: white; border: none; border-radius: 6px; padding: 8px 20px; font-weight: 600; }
         #saveBtn:hover { background: #22543d; }
         #cancelBtn { background: #e2e8f0; color: #4a5568; border: none; border-radius: 6px; padding: 8px 20px; }
-        #warningLbl { font-size: 12px; color: #2d3748; }
         QTableWidget { border: 1px solid #e2e8f0; font-size: 12px; }
         QHeaderView::section { background: #edf2f7; font-weight: 600; padding: 6px; border: none; }
         QListWidget { border: 1px solid #e2e8f0; font-size: 12px; }
@@ -471,10 +403,11 @@ class MedicineTab(QWidget):
         ph_row = QHBoxLayout()
         ph_row.addWidget(QLabel("📝 Danh sách đơn thuốc"))
         ph_row.addStretch()
-        self.new_presc_btn = QPushButton("📝 Kê đơn thuốc mới")
-        self.new_presc_btn.setObjectName("primaryBtn")
-        self.new_presc_btn.clicked.connect(self._new_prescription)
-        ph_row.addWidget(self.new_presc_btn)
+        if role != "doctor":
+            self.new_presc_btn = QPushButton("📝 Kê đơn thuốc mới")
+            self.new_presc_btn.setObjectName("primaryBtn")
+            self.new_presc_btn.clicked.connect(self._new_prescription)
+            ph_row.addWidget(self.new_presc_btn)
         pl.addLayout(ph_row)
 
         self.presc_table = QTableWidget()
@@ -534,8 +467,7 @@ class MedicineTab(QWidget):
         # Determine current user role for UI permissions
         import core.auth as auth
         user = auth.get_current_user()
-        is_pharmacist = user and user.get("role_id") == 5 # Pharmacist is 5. Wait, we use permissions.
-        # Actually, let's just show the button, and if they click it, it's a pharmacist action.
+        role = user.get("role") if user else None
         
         for r, p in enumerate(prescriptions):
             # The query currently returns: id, issue_date, notes, patient_name, doctor_name, item_count
@@ -554,13 +486,20 @@ class MedicineTab(QWidget):
                 self.presc_table.setItem(r, c, item)
                 
             if status != "Đã phát":
-                btn = QPushButton("💊 Xuất thuốc")
-                btn.setObjectName("actionBtn")
-                btn.setStyleSheet("background:#bee3f8; color:#2b6cb0; border-radius:4px; padding:4px;")
-                btn.clicked.connect(lambda _, pid=p["id"]: self._dispense_prescription(pid))
-                self.presc_table.setCellWidget(r, 6, btn)
+                if role == "doctor":
+                    item = QTableWidgetItem("Chờ xuất")
+                    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                    self.presc_table.setItem(r, 6, item)
+                else:
+                    btn = QPushButton("💊 Xuất thuốc")
+                    btn.setObjectName("actionBtn")
+                    btn.setStyleSheet("background:#bee3f8; color:#2b6cb0; border-radius:4px; padding:4px;")
+                    btn.clicked.connect(lambda _, pid=p["id"]: self._dispense_prescription(pid))
+                    self.presc_table.setCellWidget(r, 6, btn)
             else:
-                self.presc_table.setItem(r, 6, QTableWidgetItem("Đã xuất"))
+                item = QTableWidgetItem("Đã xuất")
+                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                self.presc_table.setItem(r, 6, item)
 
     def _selected_med_id(self):
         row = self.med_table.currentRow()
@@ -609,6 +548,10 @@ class MedicineTab(QWidget):
     def _dispense_prescription(self, presc_id):
         import core.auth as auth
         user = auth.get_current_user()
+        role = user.get("role") if user else None
+        if role == "doctor":
+            QMessageBox.warning(self, "Từ chối truy cập", "Bác sĩ không có quyền xuất thuốc.")
+            return
         
         # Get prescription
         presc = dao.get_prescription_by_id(presc_id)

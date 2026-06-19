@@ -31,10 +31,7 @@ class ExecutiveReportTab(QWidget):
         self.generate_btn.clicked.connect(self._generate_report)
         header.addWidget(self.generate_btn)
         
-        self.export_btn = QPushButton("📥 Xuất PDF")
-        self.export_btn.setObjectName("actionBtn")
-        self.export_btn.clicked.connect(self._export_pdf)
-        header.addWidget(self.export_btn)
+
         
         layout.addLayout(header)
 
@@ -98,11 +95,7 @@ class ExecutiveReportTab(QWidget):
         
         self.report_viewer.setHtml(html_report)
 
-    def _export_pdf(self):
-        if not self.report_viewer.toPlainText():
-            QMessageBox.warning(self, "Chưa có dữ liệu", "Vui lòng sinh báo cáo trước khi xuất.")
-            return
-        QMessageBox.information(self, "Thành công", "Đã xuất báo cáo ra file PDF (Mô phỏng).")
+
 
     def _apply_style(self):
         self.setStyleSheet("""
@@ -113,11 +106,7 @@ class ExecutiveReportTab(QWidget):
             border-radius: 7px; padding: 9px 18px; font-weight: 600; font-size: 13px;
         }
         #primaryBtn:hover { background: #22543d; }
-        #actionBtn {
-            background: #2b6cb0; color: white; border: none;
-            border-radius: 7px; padding: 9px 18px; font-weight: 600; font-size: 13px;
-        }
-        #actionBtn:hover { background: #2c5282; }
+
         QTextBrowser {
             background: white; border: 1px solid #e2e8f0; border-radius: 8px;
             padding: 20px; font-size: 14px;
