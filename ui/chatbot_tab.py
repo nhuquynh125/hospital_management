@@ -22,7 +22,7 @@ GEMINI_MODEL   = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash").strip()
 
 try:
     import warnings
-    warnings.filterwarnings("ignore", category=FutureWarning, module="google.generativeai")
+    warnings.filterwarnings("ignore", category=FutureWarning)
     import google.generativeai as genai
     GEMINI = True
     if GEMINI_API_KEY:

@@ -481,6 +481,22 @@ def update_appointment_status(appt_id: int, status: str):
     conn.commit()
     conn.close()
 
+def auto_reschedule_missed_appointments():
+    from datetime import date
+    conn = get_connection()
+    cur = conn.cursor()
+    today_str = date.today().isoformat()
+    
+    query = """
+        UPDATE appointments
+        SET appointment_date = ?
+        WHERE status IN ('Chờ', 'Đang khám')
+          AND appointment_date < ?
+    """
+    cur.execute(query, (today_str, today_str))
+    conn.commit()
+    conn.close()
+
 
 # ═══════════════════════════════════════════════════════════
 #  ROOMS

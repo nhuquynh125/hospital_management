@@ -17,6 +17,10 @@ def main():
     # 1. Bootstrap database
     init_db()
 
+    # 1.5. Reschedule missed appointments
+    from database.dao import auto_reschedule_missed_appointments
+    auto_reschedule_missed_appointments()
+
     # 2. Launch Qt app
     app = QApplication(sys.argv)
     app.setApplicationName("Hospital Management System")
